@@ -112,9 +112,6 @@ export default function NetworkViz({ network, inputValue, animTrigger }) {
     [network, inputValue, animTrigger]
   );
 
-  // Debug: log activations for troubleshooting
-  console.log("NetworkViz activations:", activations);
-
   const maxWeights = weights.map(W =>
     Math.max(...W.flat().map(Math.abs), 1e-9)
   );

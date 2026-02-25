@@ -114,6 +114,7 @@ function snapshot(gs) {
     correct: gs.correct, total: gs.total,
     trainCount: gs.trainCount, lastLoss: gs.lastLoss,
     lossHistory: gs.lossHistory.slice(),
+    poisonedUntil: gs.poisonedUntil || 0,
   };
 }
 
@@ -178,10 +179,23 @@ function gameTick(gs) {
           angle: (i / 8) * Math.PI * 2,
           hex: col.hex, born: now,
         });
-        gs.collections[gs.target.colorId]++;
-        gs.total++;
-        if (gs.target.colorId === gs.indicator.id) gs.correct++;
-        c.state = "happy"; c.happyUntil = now + 750;
+        // Poison logic: wrong color
+        if (gs.target.colorId === gs.indicator.id) {
+          gs.collections[gs.target.colorId]++;
+          gs.total++;
+          gs.correct++;
+          c.state = "happy"; c.happyUntil = now + 750;
+        } else {
+          // Negative feedback: poison burst
+          gs.poisonedUntil = now + 700;
+          c.state = "poisoned"; c.happyUntil = now + 700;
+          // Add a red sparkle burst
+          for (let i = 0; i < 8; i++) gs.sparkles.push({
+            id: _sparkId++, x: res.x, y: res.y,
+            angle: (i / 8) * Math.PI * 2,
+            hex: "#ef4444", born: now,
+          });
+        }
         // Respawn after fade
         const cid = res.colorId;
         setTimeout(() => {
@@ -200,7 +214,7 @@ function gameTick(gs) {
       c.x += (dx / d) * step;
       c.y += (dy / d) * step;
       c.angle = Math.atan2(dy, dx);
-      if (c.state !== "happy") c.state = "moving";
+      if (c.state !== "happy" && c.state !== "poisoned") c.state = "moving";
     }
   } else {
     // Idle micro-wander
@@ -210,10 +224,11 @@ function gameTick(gs) {
       c.x = Math.max(CZONE.x0, Math.min(CZONE.x1, c.x + Math.cos(a) * r));
       c.y = Math.max(CZONE.y0, Math.min(CZONE.y1, c.y + Math.sin(a) * r));
     }
-    if (c.state !== "happy") c.state = "idle";
+    if (c.state !== "happy" && c.state !== "poisoned") c.state = "idle";
   }
 
   if (c.state === "happy" && now >= c.happyUntil) c.state = "idle";
+  if (c.state === "poisoned" && (!gs.poisonedUntil || now >= gs.poisonedUntil)) c.state = "idle";
   gs.sparkles = gs.sparkles.filter(s => now - s.born < 600);
 }
 
@@ -411,6 +426,12 @@ export default function Terrarium({ network, onIndicatorChange, onResourceCounte
 function TerrariumScene({ snap }) {
   const { now, cx, cy, cAngle, cState, resources, sparkles, target } = snap;
 
+  // Poisoned effect: fade value
+  const poisonAge = snap.poisonedUntil
+    ? Math.max(0, 1 - (now - (snap.poisonedUntil - 700)) / 700)
+    : 0;
+  const poisoned = poisonAge > 0.01;
+
   return (
     <svg viewBox={`0 0 ${TW} ${TH}`} width="100%" style={{ display: "block" }}>
       <defs>
@@ -437,6 +458,13 @@ function TerrariumScene({ snap }) {
           <stop offset="60%" stopColor={snap.indicator.hex} stopOpacity="0.10" />
           <stop offset="100%" stopColor="#000" stopOpacity="0.0" />
         </radialGradient>
+        {/* Poisoned radial burst — centred on creature, not full screen */}
+        {poisoned && (
+          <radialGradient id="poisonBurst" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stopColor="#ef4444" stopOpacity={0.45 * poisonAge} />
+            <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
+          </radialGradient>
+        )}
       </defs>
 
       {/* Sky */}
@@ -516,8 +544,14 @@ function TerrariumScene({ snap }) {
       {/* Sparkle bursts */}
       {sparkles.map(s => <Sparkle key={s.id} s={s} now={now} />)}
 
+      {/* Poisoned radial burst */}
+      {poisoned && (
+        <ellipse cx={cx} cy={cy} rx={60} ry={50}
+          fill="url(#poisonBurst)" opacity={0.8 * poisonAge} />
+      )}
+
       {/* The creature */}
-      <Critter x={cx} y={cy} angle={cAngle} state={cState} />
+      <Critter x={cx} y={cy} angle={cAngle} state={cState} poisoned={poisoned} poisonAge={poisonAge} />
 
       {/* Vignette overlay — keeps edges dark like looking through glass */}
       <rect x={0} y={0} width={TW} height={TH} fill="url(#gVignette)" />
@@ -605,14 +639,17 @@ function Sparkle({ s, now }) {
   );
 }
 
-function Critter({ x, y, angle, state }) {
+function Critter({ x, y, angle, state, poisoned, poisonAge }) {
   // Pupils track movement direction
-  const lx = Math.cos(angle) * 2.8;
-  const ly = Math.sin(angle) * 2.8;
   const happy = state === "happy";
-  // Squish/stretch on happy
-  const scaleX = happy ? 1.14 : 1;
-  const scaleY = happy ? 0.91 : 1;
+  // Squish/stretch: happy or poisoned
+  const scaleX = happy ? 1.14 : poisoned ? 0.88 : 1;
+  const scaleY = happy ? 0.91 : poisoned ? 1.18 : 1;
+
+  // Debug print for poisoned state
+  if (poisoned) {
+    console.log("Creature is poisoned! poisonAge:", poisonAge);
+  }
 
   return (
     <g transform={`translate(${x}, ${y})`}>
@@ -624,27 +661,38 @@ function Critter({ x, y, angle, state }) {
         <ellipse cx={0} cy={0} rx={15} ry={14} fill="#b8814a" />
         <ellipse cx={0} cy={0} rx={14} ry={13} fill="#cc9660" />
         {/* Belly */}
-        <ellipse cx={0} cy={5} rx={9} ry={8} fill="#e8c49e" opacity={0.48} />
+        <ellipse cx={0} cy={5} rx={9} ry={8} fill="#e8c49e" opacity={poisoned ? 0.18 + 0.3 * poisonAge : 0.48} />
 
-        {/* Eyes — whites */}
-        <circle cx={-6} cy={-4} r={4.8} fill="white" />
-        <circle cx={ 6} cy={-4} r={4.8} fill="white" />
-
-        {/* Pupils — wider tracking range */}
-        <circle cx={-6 + Math.cos(angle) * 4} cy={-4 + Math.sin(angle) * 4} r={2.6} fill="#10102a" />
-        <circle cx={ 6 + Math.cos(angle) * 4} cy={-4 + Math.sin(angle) * 4} r={2.6} fill="#10102a" />
-
-        {/* Eye highlights */}
-        <circle cx={-4.5} cy={-5.5} r={0.95} fill="rgba(255,255,255,0.9)" />
-        <circle cx={ 7.4} cy={-5.5} r={0.95} fill="rgba(255,255,255,0.9)" />
-
-        {/* Idle eyelid — half-closed droopy look when not moving */}
-        {state === "idle" && (
+        {/* Eyes — normal or X-eyes */}
+        {!poisoned && (
           <>
-            <ellipse cx={-6} cy={-5.5} rx={4.8} ry={2.2}
-              fill="#cc9660" opacity={0.7} />
-            <ellipse cx={ 6} cy={-5.5} rx={4.8} ry={2.2}
-              fill="#cc9660" opacity={0.7} />
+            {/* Eyes — whites */}
+            <circle cx={-6} cy={-4} r={4.8} fill="white" />
+            <circle cx={ 6} cy={-4} r={4.8} fill="white" />
+            {/* Pupils — wider tracking range */}
+            <circle cx={-6 + Math.cos(angle) * 4} cy={-4 + Math.sin(angle) * 4} r={2.6} fill="#10102a" />
+            <circle cx={ 6 + Math.cos(angle) * 4} cy={-4 + Math.sin(angle) * 4} r={2.6} fill="#10102a" />
+            {/* Eye highlights */}
+            <circle cx={-4.5} cy={-5.5} r={0.95} fill="rgba(255,255,255,0.9)" />
+            <circle cx={ 7.4} cy={-5.5} r={0.95} fill="rgba(255,255,255,0.9)" />
+            {/* Idle eyelid — half-closed droopy look when not moving */}
+            {state === "idle" && (
+              <>
+                <ellipse cx={-6} cy={-5.5} rx={4.8} ry={2.2}
+                  fill="#cc9660" opacity={0.7} />
+                <ellipse cx={ 6} cy={-5.5} rx={4.8} ry={2.2}
+                  fill="#cc9660" opacity={0.7} />
+              </>
+            )}
+          </>
+        )}
+        {/* X-eyes when poisoned */}
+        {poisoned && (
+          <>
+            <line x1={-9} y1={-7} x2={-3} y2={-1} stroke="#1a0a0a" strokeWidth={1.8} strokeLinecap="round" opacity={poisonAge} />
+            <line x1={-3} y1={-7} x2={-9} y2={-1} stroke="#1a0a0a" strokeWidth={1.8} strokeLinecap="round" opacity={poisonAge} />
+            <line x1={ 3} y1={-7} x2={ 9} y2={-1} stroke="#1a0a0a" strokeWidth={1.8} strokeLinecap="round" opacity={poisonAge} />
+            <line x1={ 9} y1={-7} x2={ 3} y2={-1} stroke="#1a0a0a" strokeWidth={1.8} strokeLinecap="round" opacity={poisonAge} />
           </>
         )}
 
@@ -654,9 +702,15 @@ function Critter({ x, y, angle, state }) {
             stroke="#8a5e38" strokeWidth={1.3} fill="none" strokeLinecap="round" />
         )}
 
+        {/* Poisoned frown */}
+        {poisoned && (
+          <path d="M -5 8 Q 0 3 5 8"
+            stroke="#ef4444" strokeWidth={1.3} fill="none" strokeLinecap="round" opacity={poisonAge} />
+        )}
+
         {/* Blush */}
-        <circle cx={-11} cy={3} r={3.8} fill="rgba(255,120,120,0.32)" />
-        <circle cx={ 11} cy={3} r={3.8} fill="rgba(255,120,120,0.32)" />
+        <circle cx={-11} cy={3} r={3.8} fill={poisoned ? `rgba(239,68,68,${0.32 * poisonAge})` : "rgba(255,120,120,0.32)"} />
+        <circle cx={ 11} cy={3} r={3.8} fill={poisoned ? `rgba(239,68,68,${0.32 * poisonAge})` : "rgba(255,120,120,0.32)"} />
 
         {/* Feet */}
         <ellipse cx={-7.5} cy={15} rx={5.8} ry={3.6} fill="#a87048" />
