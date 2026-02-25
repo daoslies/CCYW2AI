@@ -21,8 +21,8 @@ export default function App() {
   const updatePredictions = useCallback(() => {
     const preds = {};
     for (const c of COLORS) {
-      // ML team: nnForward now returns a probability vector (softmax output)
-      const out = nnForward(networkRef.current, [c.value]);
+      // ML team: nnForward now takes one-hot input (categorical)
+      const out = nnForward(networkRef.current, c.oneHot);
       preds[c.id] = decodeOutput(out); // decodeOutput uses argmax
     }
     setPredictions(preds);
@@ -32,16 +32,16 @@ export default function App() {
 
   const handlePress = (pressedColor) => {
     const net = networkRef.current;
-    const inputVal = indicator.value;
-    // ML team: Use one-hot encoding as target for cross-entropy
+    // ML team: Use one-hot encoding as input and as target for cross-entropy
+    const inputVec = indicator.oneHot;
     const targetVal = pressedColor.oneHot;
 
-    const trainstepsPerDatapoint = 1
+    const trainstepsPerDatapoint = 1;
 
     // Train several steps per click for faster convergence
     let loss = 0;
     for (let i = 0; i < trainstepsPerDatapoint; i++) {
-      loss = nnTrainStep(net, [inputVal], targetVal, 0.4);
+      loss = nnTrainStep(net, inputVec, targetVal, 0.4);
     }
 
     const newCount = trainCount + 1;
@@ -169,7 +169,7 @@ export default function App() {
         </div>
 
         {/* Network visualisation */}
-        <NetworkViz network={networkRef.current} inputValue={indicator.value} animTrigger={trainCount} />
+        <NetworkViz network={networkRef.current} inputValue={indicator.oneHot} animTrigger={trainCount} />
 
         {/* Main card */}
         <div

@@ -108,10 +108,12 @@ export default function NetworkViz({ network, inputValue, animTrigger }) {
   }, [animTrigger]);
 
   const { activations, weights } = useMemo(
-    () => getNetworkState(network, [inputValue ?? 0]),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    () => getNetworkState(network, inputValue ?? [0,0,0]),
     [network, inputValue, animTrigger]
   );
+
+  // Debug: log activations for troubleshooting
+  console.log("NetworkViz activations:", activations);
 
   const maxWeights = weights.map(W =>
     Math.max(...W.flat().map(Math.abs), 1e-9)
@@ -166,7 +168,9 @@ export default function NetworkViz({ network, inputValue, animTrigger }) {
             if (li === DISPLAY_LAYERS.length - 1) {
               const probs = activations[li];
               const winner = probs.indexOf(Math.max(...probs));
-              const { fill, opacity } = outputNodeColor(ni, probs);
+              let { fill, opacity } = outputNodeColor(ni, probs);
+              // Clamp and default opacity
+              opacity = typeof opacity === "number" && isFinite(opacity) ? Math.max(0, Math.min(1, opacity)) : 0;
               return (
                 <g key={`n-${li}-${ni}`}>
                   <circle
@@ -196,8 +200,21 @@ export default function NetworkViz({ network, inputValue, animTrigger }) {
                 </g>
               );
             }
-            // Hidden/input: as before
-            const { fill, glow } = nodeColor(act);
+            // Hidden/input: color input neurons by their class color, dim if not active
+            const isInputLayer = li === 0;
+            let fill, glow;
+            if (isInputLayer) {
+              if (act === 1) {
+                fill = COLORS[ni].hex;
+                glow = COLORS[ni].glow;
+              } else {
+                // Dimmed color for inactive input
+                fill = COLORS[ni].hex + '33';
+                glow = COLORS[ni].glow + '22';
+              }
+            } else {
+              ({ fill, glow } = nodeColor(act));
+            }
             const isWave     = waveLayer === li;
             return (
               <g key={`n-${li}-${ni}`}>
@@ -232,7 +249,11 @@ export default function NetworkViz({ network, inputValue, animTrigger }) {
                     fontSize={7.5}
                     fontFamily="DM Mono, monospace"
                   >
-                    {act.toFixed(2)}
+                    {typeof act === "number"
+                      ? act.toFixed(2)
+                      : Array.isArray(act) && typeof act[ni] === "number"
+                        ? act[ni].toFixed(2)
+                        : String(act)}
                   </text>
                 )}
               </g>
