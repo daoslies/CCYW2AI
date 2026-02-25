@@ -181,7 +181,12 @@ function gameTick(gs) {
         });
         // Poison logic: wrong color
         if (gs.target.colorId === gs.indicator.id) {
-          gs.collections[gs.target.colorId]++;
+          // Resource gather bonus
+          let bonus = 0;
+          if (gs.target.colorId === "red")   bonus = gs._redGatherBonus || 0;
+          if (gs.target.colorId === "green") bonus = gs._greenGatherBonus || 0;
+          if (gs.target.colorId === "blue")  bonus = gs._blueGatherBonus || 0;
+          gs.collections[gs.target.colorId] += 1 + bonus;
           gs.total++;
           gs.correct++;
           c.state = "happy"; c.happyUntil = now + 750;
@@ -371,21 +376,22 @@ export default function Terrarium({ network, onIndicatorChange, onResourceCounte
           {UPGRADES.map(upg => {
             const lvl = upgradeLevels[upg.id] || 0;
             const maxed = upg.maxLevel && lvl >= upg.maxLevel;
+            // Cost now scales with level
+            const cost = typeof upg.cost === "function" ? upg.cost(lvl) : upg.cost;
             return (
-              <div key={upg.id} style={{ marginBottom: 8, padding: 8, borderRadius: 8, background: "#101624", boxShadow: "0 1px 4px #0002" }}>
+              <div key={upg.id}
+                style={{ marginBottom: 8, padding: 8, borderRadius: 8, background: "#101624", boxShadow: "0 1px 4px #0002", cursor: maxed ? "not-allowed" : "pointer", opacity: maxed ? 0.6 : 1 }}
+                onClick={() => !maxed && handleUpgrade(upg.id)}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ color: "#e0eaff", fontSize: 12, fontWeight: 500 }}>{upg.label}</span>
-                  <button
-                    disabled={maxed}
-                    onClick={() => handleUpgrade(upg.id)}
-                    style={{
-                      background: maxed ? "#222c" : "#2563eb",
-                      color: maxed ? "#888" : "#fff",
-                      border: "none", borderRadius: 6, padding: "2px 10px", fontSize: 11, fontWeight: 600,
-                      cursor: maxed ? "not-allowed" : "pointer", marginLeft: 8
-                    }}>
-                    {maxed ? "MAX" : `+1 (${upg.cost})`}
-                  </button>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    {COLORS.map(c => cost[c.id] > 0 && (
+                      <span key={c.id} style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                        <span style={{ width: 12, height: 12, borderRadius: "50%", background: c.hex, boxShadow: `0 0 6px ${c.glow}`, border: "1px solid #222", marginRight: 2 }} />
+                        <span style={{ color: c.hex, fontSize: 12, fontWeight: 600 }}>{cost[c.id]}</span>
+                      </span>
+                    ))}
+                  </div>
                 </div>
                 <div style={{ color: "#b6c2e0", fontSize: 11, margin: "4px 0 0" }}>{upg.description}</div>
                 <div style={{ color: "#7dd3fc", fontSize: 10, marginTop: 2 }}>Level: {lvl}{upg.maxLevel ? `/${upg.maxLevel}` : ""}</div>
@@ -396,6 +402,34 @@ export default function Terrarium({ network, onIndicatorChange, onResourceCounte
       );
     }
   }, [upgradeLevels, onUpgradesSidebar]);
+
+  // Update handleUpgrade to use cost function
+  function handleUpgrade(upgId) {
+    const upg = UPGRADES.find(u => u.id === upgId);
+    if (!upg) return;
+    const lvl = upgradeLevels[upgId] || 0;
+    if (upg.maxLevel && lvl >= upg.maxLevel) return;
+    const cost = typeof upg.cost === "function" ? upg.cost(lvl) : upg.cost;
+    // Check resource costs
+    const gs = gsRef.current;
+    let canAfford = true;
+    for (const col of COLORS) {
+      if ((cost[col.id] || 0) > (gs.collections[col.id] || 0)) {
+        canAfford = false;
+        break;
+      }
+    }
+    if (!canAfford) return;
+    // Deduct resources
+    for (const col of COLORS) {
+      gs.collections[col.id] -= (cost[col.id] || 0);
+    }
+    // Apply upgrade
+    const newLevels = { ...upgradeLevels, [upgId]: lvl + 1 };
+    setUpgradeLevels(newLevels);
+    applyAllUpgrades(gs, newLevels);
+    setSnap(snapshot(gs));
+  }
 
   return (
     <div style={{
@@ -646,10 +680,6 @@ function Critter({ x, y, angle, state, poisoned, poisonAge }) {
   const scaleX = happy ? 1.14 : poisoned ? 0.88 : 1;
   const scaleY = happy ? 0.91 : poisoned ? 1.18 : 1;
 
-  // Debug print for poisoned state
-  if (poisoned) {
-    console.log("Creature is poisoned! poisonAge:", poisonAge);
-  }
 
   return (
     <g transform={`translate(${x}, ${y})`}>
