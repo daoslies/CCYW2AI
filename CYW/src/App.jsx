@@ -3,6 +3,8 @@ import { makeNetwork, nnTrainStep, nnForward } from "./nn";
 import { COLORS, decodeOutput } from "./colors";
 import NetworkViz from "./NetworkViz";
 import Terrarium from "./Terrarium";
+import Terrarium2 from "./Terrarium2";
+import { UPGRADES } from "./upgrades";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 8. The training loop in handlePress
@@ -11,18 +13,27 @@ import Terrarium from "./Terrarium";
 
 export default function App() {
   const networkRef = useRef(makeNetwork());
+  const terrarium2NetworkRef = useRef(makeNetwork());
   const [indicator, setIndicator] = useState(COLORS[Math.floor(Math.random() * 3)]);
+  const [terrariumIndicator, setTerrariumIndicator] = useState(COLORS[0]);
+  const [terrarium2Indicator, setTerrarium2Indicator] = useState(COLORS[0]);
   const [trainCount, setTrainCount] = useState(0);
+  const [terrarium2TrainCount, setTerrarium2TrainCount] = useState(0);
   const [lastLoss, setLastLoss] = useState(null);
   const [predictions, setPredictions] = useState(null);   // {red, green, blue} → predicted color
   const [lastPressed, setLastPressed] = useState(null);
   const [flash, setFlash] = useState(null);               // "correct" | "wrong"
   const [lossHistory, setLossHistory] = useState([]);
   const [view, setView] = useState("trainer");
-  const [terrariumIndicator, setTerrariumIndicator] = useState(COLORS[0]);
   const [terrariumResourceCounters, setTerrariumResourceCounters] = useState(null);
   const [terrariumTrainingPanel, setTerrariumTrainingPanel] = useState(null);
+  const [terrarium2TrainingPanel, setTerrarium2TrainingPanel] = useState(null);
   const [upgradesSidebar, setUpgradesSidebar] = useState(null);
+  const [secondTerrariumUnlocked, setSecondTerrariumUnlocked] = useState(false);
+  // Track upgrade levels from the main terrarium
+  const [terrariumUpgradeLevels, setTerrariumUpgradeLevels] = useState({});
+  // State for Terrarium2's training panel
+  const [activeTerrarium, setActiveTerrarium] = useState(1); // 1 or 2
 
   const UI_ZOOM = 1.4; // must match index.css html { zoom }
 
@@ -37,6 +48,19 @@ export default function App() {
   }, []);
 
   useEffect(() => { updatePredictions(); }, []);
+
+  useEffect(() => {
+    // If upgradesSidebar contains the unlock, check if it's been purchased
+    // (This is a simple approach; you may want to persist this in localStorage)
+    if (upgradesSidebar && upgradesSidebar.props) {
+      // Find the upgrade level for 'secondTerrarium'
+      const upg = upgradesSidebar.props.children?.find?.(u => u?.key === "secondTerrarium");
+      if (upg && upg.props && upg.props.children) {
+        // If maxed, unlock
+        setSecondTerrariumUnlocked(true);
+      }
+    }
+  }, [upgradesSidebar]);
 
   const handlePress = (pressedColor) => {
     const net = networkRef.current;
@@ -94,12 +118,13 @@ export default function App() {
   // --- Terrarium persistent mounting ---
   const [terrariumMounted] = useState(true); // always true, for clarity
   const terrariumRef = useRef();
+  const terrarium2Ref = useRef();
 
   // --- Center column fixed container ---
   return (
     <div style={{
       minHeight: "100vh",
-      background: "#0a0a0f",
+      background: "#0a0c16", // slightly lighter than the side panels
       display: "flex",
       flexDirection: "row",
       alignItems: "stretch",
@@ -128,12 +153,22 @@ export default function App() {
         overflowY: "auto"
       }}>
         <div style={{ width: "100%", maxWidth: 400, margin: "0 auto 18px auto" }}>
-          <NetworkViz
-            network={networkRef.current}
-            inputValue={view === "trainer" ? indicator.oneHot : terrariumIndicator.oneHot}
-            animTrigger={trainCount}
-            style={{ width: "100%", height: "auto", maxWidth: 400, aspectRatio: "1.06" }}
-          />
+          {/* Show network viz for active terrarium only */}
+          {view === "terrarium" && terrariumUpgradeLevels.secondTerrarium >= 1 && activeTerrarium === 2 ? (
+            <NetworkViz
+              network={terrarium2NetworkRef.current}
+              inputValue={terrarium2Indicator.oneHot}
+              animTrigger={terrarium2TrainCount}
+              style={{ width: "100%", height: "auto", maxWidth: 400, aspectRatio: "1.06" }}
+            />
+          ) : (
+            <NetworkViz
+              network={networkRef.current}
+              inputValue={view === "trainer" ? indicator.oneHot : terrariumIndicator.oneHot}
+              animTrigger={trainCount}
+              style={{ width: "100%", height: "auto", maxWidth: 400, aspectRatio: "1.06" }}
+            />
+          )}
         </div>
         {/* Resource counters for terrarium mode */}
         {terrariumResourceCounters}
@@ -155,7 +190,7 @@ export default function App() {
         maxHeight: `${100 / UI_ZOOM}vh`,
         minHeight: 0,
         boxSizing: "border-box",
-        background: "none",
+        background: "#0a0c16", // slightly lighter than the side panels
         zIndex: 1
       }}>
         {/* Tab switch, always visible */}
@@ -375,16 +410,63 @@ export default function App() {
           {/* Terrarium view (always mounted, only visible when active) */}
           <div style={{ display: view === "terrarium" ? "flex" : "none", width: "100%", height: "100%", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
             <div style={{ width: "100%", maxWidth: 540, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-              <Terrarium
-                ref={terrariumRef}
-                network={networkRef.current}
-                onIndicatorChange={setTerrariumIndicator}
-                onResourceCounters={setTerrariumResourceCounters}
-                onTrainingPanel={setTerrariumTrainingPanel}
-                onUpgradesSidebar={setUpgradesSidebar}
-              />
-              {/* Terrarium training buttons below the visualisation */}
-              {terrariumTrainingPanel}
+              {/* Terrarium 1 clickable wrapper */}
+              <div
+                onClick={() => setActiveTerrarium(1)}
+                style={{
+                  cursor: "pointer",
+                  outline: activeTerrarium === 1 ? "3px solid #3b82f6" : "none",
+                  boxShadow: activeTerrarium === 1 ? "0 0 16px #3b82f6aa" : "none",
+                  borderRadius: 24,
+                  transition: "outline 0.2s, box-shadow 0.2s",
+                  marginBottom: 24,
+                  width: "100%"
+                }}
+              >
+                <Terrarium
+                  ref={terrariumRef}
+                  network={networkRef.current}
+                  onIndicatorChange={setTerrariumIndicator}
+                  onResourceCounters={setTerrariumResourceCounters}
+                  onTrainingPanel={setTerrariumTrainingPanel}
+                  onUpgradesSidebar={setUpgradesSidebar}
+                  onUpgradeLevelsChange={setTerrariumUpgradeLevels}
+                />
+                {/* Terrarium 1 training panel, only if active */}
+                {activeTerrarium === 1 && terrariumTrainingPanel}
+              </div>
+              {/* Weather terrarium, unlocked by upgrade */}
+              {terrariumUpgradeLevels.secondTerrarium >= 1 && (
+                <>
+                  <div
+                    onClick={() => setActiveTerrarium(2)}
+                    style={{
+                      marginTop: 0,
+                      width: "100%",
+                      maxWidth: 540,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      cursor: "pointer",
+                      outline: activeTerrarium === 2 ? "3px solid #38bdf8" : "none",
+                      boxShadow: activeTerrarium === 2 ? "0 0 16px #38bdf8aa" : "none",
+                      borderRadius: 24,
+                      transition: "outline 0.2s, box-shadow 0.2s",
+                      marginBottom: 24
+                    }}
+                  >
+                    <Terrarium2
+                      ref={terrarium2Ref}
+                      network={terrarium2NetworkRef.current}
+                      onIndicatorChange={setTerrarium2Indicator}
+                      onTrainingPanel={setTerrarium2TrainingPanel}
+                      onTrainCountChange={setTerrarium2TrainCount}
+                    />
+                    {/* Terrarium 2 training panel, only if active */}
+                    {activeTerrarium === 2 && terrarium2TrainingPanel}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

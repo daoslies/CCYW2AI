@@ -54,5 +54,15 @@ export const UPGRADES = [
       gs._blueGatherBonus = level;
     }
   },
+  {
+    id: "secondTerrarium",
+    label: "Unlock Weather Terrarium",
+    description: "Unlocks a second terrarium with weather and new neural network mechanics.",
+    cost: (level) => ({ red: 1, green: 0, blue: 0 }),
+    maxLevel: 1,
+    apply: (gs, level) => {
+      // Unlock logic handled in App.jsx; this is a marker upgrade.
+    }
+  },
   // Add more upgrades as desired
 ];
