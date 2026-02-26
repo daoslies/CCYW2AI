@@ -5,6 +5,7 @@ import NetworkViz from "./NetworkViz";
 import Terrarium from "./Terrarium";
 import Terrarium2 from "./Terrarium2";
 import { UPGRADES } from "./upgrades";
+import { QUOTES } from "./quotes";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 8. The training loop in handlePress
@@ -34,6 +35,34 @@ export default function App() {
   const [terrariumUpgradeLevels, setTerrariumUpgradeLevels] = useState({});
   // State for Terrarium2's training panel
   const [activeTerrarium, setActiveTerrarium] = useState(1); // 1 or 2
+
+  // Add quote state for terrarium view
+  const [activeQuoteIdx, setActiveQuoteIdx] = useState(() => Math.floor(Math.random() * QUOTES.length));
+  const [activeQuoteLineIdx, setActiveQuoteLineIdx] = useState(0);
+  const [quoteLineTimer, setQuoteLineTimer] = useState(null);
+
+  // Rotate quote lines every 10 seconds
+  useEffect(() => {
+    if (view !== "terrarium") return;
+    if (quoteLineTimer) clearTimeout(quoteLineTimer);
+    const lines = QUOTES[activeQuoteIdx].text.split("\n");
+    const timer = setTimeout(() => {
+      if (activeQuoteLineIdx < lines.length - 1) {
+        setActiveQuoteLineIdx(idx => idx + 1);
+      } else {
+        // Move to next quote and reset line
+        setActiveQuoteIdx(idx => (idx + 1) % QUOTES.length);
+        setActiveQuoteLineIdx(0);
+      }
+    }, 10000); // 10 seconds
+    setQuoteLineTimer(timer);
+    return () => clearTimeout(timer);
+  }, [view, activeQuoteIdx, activeQuoteLineIdx]);
+
+  // Reset line index when quote changes
+  useEffect(() => {
+    setActiveQuoteLineIdx(0);
+  }, [activeQuoteIdx]);
 
   const UI_ZOOM = 1.4; // must match index.css html { zoom }
 
@@ -193,8 +222,20 @@ export default function App() {
         background: "#0a0c16", // slightly lighter than the side panels
         zIndex: 1
       }}>
-        {/* Tab switch, always visible */}
-        <div style={{ marginBottom: 24, marginTop: 8, display: "flex", gap: 8 }}>
+        {/* Tab switch, always visible, fixed at top */}
+        <div style={{
+          position: "fixed",
+          left: 340,
+          right: 280,
+          top: 0,
+          zIndex: 20,
+          background: "#0a0c16",
+          padding: "0px 0 0px 0", // Increased top padding for trainer view
+          display: "flex",
+          gap: 8,
+          justifyContent: "center",
+          boxShadow: "0 2px 12px #0004"
+        }}>
           <button
             onClick={() => setView("trainer")}
             style={{
@@ -224,6 +265,8 @@ export default function App() {
             Terrarium
           </button>
         </div>
+        {/* Spacer for fixed tab bar height */}
+        <div style={{ height: 66 }} />
         {/* Fixed content area below tab bar */}
         <div style={{ flex: 1, width: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start" }}>
           {/* Trainer view */}
@@ -236,7 +279,7 @@ export default function App() {
             justifyContent: "flex-start",  // was "center", now flex-start
             overflowY: "auto",             // scroll within this panel only
             overflowX: "hidden",
-            paddingTop: 16,                // breathing room at top
+            paddingTop: 40,                // breathing room at top
             boxSizing: "border-box",
             minHeight: 0,                  // allow flexbox to shrink
             paddingBottom: 32              // extra breathing room at bottom
@@ -253,11 +296,38 @@ export default function App() {
               {/* Header */}
               <div style={{ marginBottom: 32, textAlign: "center" }}>
                 <p style={{ color: "#444", fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", margin: "0 0 6px" }}>
-                  categorical · nn · trainer
+                  Gibbet brain X · Psionic training
+                  <br />
+                  <span style={{ color: '#7dd3fc', fontWeight: 500 }}>
+                    {(() => {
+                      // Check how many color matches the model gets right
+                      let nCorrect = 0;
+                      if (predictions) {
+                        nCorrect = ["red", "green", "blue"].reduce((acc, id) => {
+                          const pred = predictions[id];
+                          return acc + (pred && pred.id === id ? 1 : 0);
+                        }, 0);
+                      }
+                      if (nCorrect === 3) return "Model training successful – Ready for Release!";
+                      if (nCorrect === 2) {
+                        if (trainCount < 10) return "Model is nearly there! Just a bit more training.";
+                        if (trainCount < 20) return "Model is showing strong recognition. Almost perfect!";
+                        if (trainCount < 40) return "Model is close, but something feels uncertain. Keep going—success is within reach.";
+                        return "Model hesitates at the threshold of mastery. Hope lingers—one last push might do it.";
+                      }
+                      if (nCorrect === 1) {
+                        if (trainCount < 10) return "Model is picking up on one color. Keep going!";
+                        if (trainCount < 20) return "Model recognises only one color. More training needed.";
+                        if (trainCount < 40) return "Model seems stuck, struggling to break through. Progress feels distant. \n It may be worth SCRAMBLING this one's brains to start fresh. \n Sometimes they become locked in their ways and there's just no reasoning with them.";
+                        return "Model is lost in confusion. Perhaps a fresh start is needed.";
+                      }
+                      if (trainCount === 0) return "Model ready to commence training";
+                      if (trainCount > 0 && trainCount < 5) return "Model warming up...";
+                      if (trainCount >= 5 && trainCount < 10) return "Model showing initial progress";
+                      return null;
+                    })()}
+                  </span>
                 </p>
-                <h1 style={{ color: "#e2e2e2", fontSize: 22, fontFamily: "'DM Sans', sans-serif", fontWeight: 600, margin: 0, letterSpacing: "-0.02em" }}>
-                  Color Predictor
-                </h1>
               </div>
 
               {/* Main card */}
@@ -402,7 +472,7 @@ export default function App() {
                       ? `last pressed · ${lastPressed.label.toLowerCase()}`
                       : ""}
                 </p>
-                <button className="reset-btn" onClick={handleReset}>RESET</button>
+                <button className="reset-btn" onClick={handleReset}>SCRAMBLE</button>
               </div>
 
             </div>
@@ -410,6 +480,35 @@ export default function App() {
           {/* Terrarium view (always mounted, only visible when active) */}
           <div style={{ display: view === "terrarium" ? "flex" : "none", width: "100%", height: "100%", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
             <div style={{ width: "100%", maxWidth: 540, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+              {/* Quote display at top of terrarium panel */}
+              <div style={{
+                marginBottom: 28,
+                marginTop: 5,
+                textAlign: "center",
+              }}>
+                <p style={{
+                  color: "#444",
+                  fontSize: 11,
+                  letterSpacing: "0.2em",
+                  textTransform: "uppercase",
+                  margin: "0 0 4px 0",
+                  lineHeight: 1.5,
+                  whiteSpace: "pre-line",
+                  maxWidth: 420,
+                }}>
+                  {QUOTES[activeQuoteIdx].text.split("\n")[activeQuoteLineIdx]}
+                </p>
+                <p style={{
+                  color: "#7dd3fc",
+                  fontSize: 10,
+                  fontWeight: 500,
+                  letterSpacing: "0.15em",
+                  margin: 0,
+                  textTransform: "uppercase",
+                }}>
+                  {QUOTES[activeQuoteIdx].author}
+                </p>
+              </div>
               {/* Terrarium 1 clickable wrapper */}
               <div
                 onClick={() => setActiveTerrarium(1)}

@@ -1,6 +1,6 @@
 import { COLORS } from "./colors";
 
-export default function Resource({ r, now }) {
+export default function Resource({ r, now, harvestProgress = 0, claimedBy, isCorrect }) {
   const col = COLORS.find(c => c.id === r.colorId);
   let opacity = 1;
   if (r.state === "fading")     opacity = Math.max(0, 1 - (now - r.stateAt) / 480);
@@ -8,13 +8,70 @@ export default function Resource({ r, now }) {
   const scale = r.state === "respawning" ? 0.3 + 0.7 * Math.min(1, (now - r.stateAt) / 520) : 1;
   const floatY = 2.8 * Math.sin(now * 0.00095 + r.x * 0.035);
 
+  // Correct resource resonance effects
+  const glowPulse = isCorrect
+    ? 0.55 + 0.15 * Math.sin(now * 0.0032) // reduced wub amplitude
+    : 0.5;
+  const haloRadius = isCorrect
+    ? 24 + 3.6 * Math.sin(now * 0.0032)   // reduced wub amplitude
+    : 20;
+
+  // Progress arc: sweep from top clockwise
+  const arcRadius = 22;
+  const circumference = 2 * Math.PI * arcRadius;
+  const dash = harvestProgress * circumference;
+
   return (
     <g transform={`translate(${r.x}, ${r.y + floatY})`} opacity={opacity}>
+      {/* Harvest progress ring */}
+      {harvestProgress > 0 && (
+        <circle
+          cx={0} cy={0} r={arcRadius}
+          fill="none"
+          stroke={col.hex}
+          strokeWidth={2}
+          strokeDasharray={`${dash} ${circumference}`}
+          strokeDashoffset={circumference / 4}
+          opacity={0.6}
+          strokeLinecap="round"
+        />
+      )}
+      {/* Claimed highlight */}
+      {claimedBy && (
+        <ellipse cx={0} cy={0} rx={24} ry={24} fill="none" stroke="#fff" strokeWidth={1.2} opacity={0.18} strokeDasharray="4 4" />
+      )}
+      {/* Resonance halo */}
+      <circle cx={0} cy={0} r={haloRadius}
+        fill={col.glow}
+        style={{ filter: "blur(8px)" }}
+        opacity={glowPulse} />
+      {/* Resonance ground pool */}
+      <ellipse cx={0} cy={16}
+        rx={isCorrect ? 20 : 14}
+        ry={isCorrect ? 7 : 5}
+        fill={col.glow}
+        style={{ filter: "blur(5px)" }}
+        opacity={isCorrect ? 0.9 + 0.1 * Math.sin(now * 0.003) : 0.6} />
+      {/* Orbiting mote */}
+      {isCorrect && (() => {
+        const orbitAngle = now * 0.0018;
+        const ox = Math.cos(orbitAngle) * 18;
+        const oy = Math.sin(orbitAngle) * 10;
+        return (
+          <g>
+            <circle cx={ox} cy={oy} r={2.2}
+              fill={col.hex} opacity={0.7}
+              style={{ filter: "blur(1px)" }} />
+            <circle cx={ox} cy={oy} r={1}
+              fill="white" opacity={0.5} />
+          </g>
+        );
+      })()}
       <ellipse cx={0} cy={16} rx={14} ry={5} fill={col.glow}
         style={{ filter: "blur(5px)" }} opacity={0.6} />
       <circle cx={0} cy={0} r={20} fill={col.glow}
         style={{ filter: "blur(8px)" }} opacity={0.5} />
-      <g transform={`scale(${scale})`}>
+      <g transform={`scale(${scale * (r.scale ?? 1)})`}>
         {r.colorId === "red" && (
           <g>
             <polygon points="0,-13 11,-2 0,11 -11,-2" fill={col.hex} />

@@ -217,7 +217,17 @@ export default function Terrarium({
                     ))}
                   </div>
                 </div>
-                <div style={{ color: "#b6c2e0", fontSize: 11, margin: "4px 0 0" }}>{upg.description}</div>
+                <div style={{ color: "#b6c2e0", fontSize: 11, margin: "4px 0 0" }}>
+                  {upg.description}
+                  {upg.id === "critBonus" && (
+                    <>
+                      <br />
+                      <span style={{ color: "#ffe066", fontWeight: 600 }}>
+                        Current crit chance: {((upgradeLevels["critBonus"] || 0) * 10).toFixed(0)}%
+                      </span>
+                    </>
+                  )}
+                </div>
                 <div style={{ color: "#7dd3fc", fontSize: 10, marginTop: 2 }}>Level: {lvl}{upg.maxLevel ? `/${upg.maxLevel}` : ""}</div>
               </div>
             );
@@ -285,7 +295,7 @@ export default function Terrarium({
     }}>
       <TerrariumScene snap={snap} />
       {/* Glass edge radial vignette overlay */}
-      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", borderRadius: 20, background: "radial-gradient(ellipse at 28% 12%, rgba(255,255,255,0.035) 0%, transparent 55%)" }} />
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", borderRadius: 20, background: "radial-gradient(ellipse at 28% 12%, rgba(255,255,255,0.018) 0%, transparent 55%)" }} />
     </div>
   );
 }

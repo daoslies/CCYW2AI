@@ -1,6 +1,7 @@
 import { COLORS } from "./colors";
-import { TW, TH, GROUND_Y, GRASS, PEBBLES, DUST } from "./terrariumEngine";
-import Critter from "./Critter";
+import { TW, TH, GROUND_Y, GRASS, PEBBLES, DUST, isCorrectCollection } from "./terrariumEngine";
+import { useRef, useEffect, useState } from "react";
+import Gibbet from "./Gibbet";
 import Resource from "./Resource";
 import Sparkle from "./Sparkle";
 
@@ -10,6 +11,33 @@ export function TerrariumScene({ snap }) {
     ? Math.max(0, 1 - (now - (snap.poisonedUntil - 700)) / 700)
     : 0;
   const poisoned = poisonAge > 0.01;
+
+  // Floating resource gain popups
+  const [gainPopups, setGainPopups] = useState([]);
+  const lastGainRef = useRef({});
+  useEffect(() => {
+    // Detect new resource gain
+    if (snap.gainEvent) {
+      setGainPopups(pops => [
+        ...pops,
+        {
+          id: `${snap.now}-${snap.gainEvent.colorId}`,
+          amount: snap.gainEvent.amount,
+          time: snap.now,
+          hex: snap.gainEvent.hex,
+        },
+      ]);
+      lastGainRef.current = snap.gainEvent;
+    }
+  }, [snap.gainEvent, snap.now]);
+  useEffect(() => {
+    // Remove old popups
+    if (!gainPopups.length) return;
+    const t = setInterval(() => {
+      setGainPopups(pops => pops.filter(p => snap.now - p.time < 900));
+    }, 200);
+    return () => clearInterval(t);
+  }, [gainPopups.length, snap.now]);
 
   return (
     <svg viewBox={`0 0 ${TW} ${TH}`} width="100%" style={{ display: "block" }}>
@@ -94,13 +122,24 @@ export function TerrariumScene({ snap }) {
             strokeDasharray="4 6" opacity={0.12} />
         );
       })()}
-      {resources.map(r => <Resource key={r.id} r={r} now={now} />)}
+      {resources.map(r => (
+        <Resource
+          key={r.id} r={r} now={now}
+          harvestProgress={snap.harvestTarget === r.id ? snap.harvestProgress : 0}
+          isCorrect={
+            snap.config?.hasWeather
+              ? isCorrectCollection(r.colorId, snap.indicator.id, snap.config, snap.weather)
+              : r.colorId === snap.indicator.id
+          }
+          claimedBy={r.claimedBy}
+        />
+      ))}
       {sparkles.map(s => <Sparkle key={s.id} s={s} now={now} />)}
       {poisoned && (
         <ellipse cx={cx} cy={cy} rx={60} ry={50}
           fill="url(#poisonBurst)" opacity={0.8 * poisonAge} />
       )}
-      <Critter x={cx} y={cy} angle={cAngle} state={cState} poisoned={poisoned} poisonAge={poisonAge} />
+      <Gibbet x={cx} y={cy} angle={cAngle} state={cState} poisoned={poisoned} poisonAge={poisonAge} gainPopups={gainPopups} />
       <rect x={0} y={0} width={TW} height={TH} fill="url(#gVignette)" />
       <path d={`M 55 9 Q ${TW * 0.42} 3 ${TW - 65} 10`}
         stroke="rgba(200,230,255,0.045)" strokeWidth={1.8} fill="none" />

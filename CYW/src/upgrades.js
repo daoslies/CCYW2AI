@@ -6,18 +6,38 @@ export const UPGRADES = [
   {
     id: "speedBoost",
     label: "Gibbet Speed",
-    description: "Increases creature walking speed by 20% per level.",
-    cost: (level) => ({ red: 5 * (level + 1), green: 0, blue: 0 }), // Cost scales with level
+    description: "Increases gibbet walking speed by 20% per level.",
+    cost: (level) => ({ red: 0, green: 0, blue: 3 * (level + 1) }), // Lowered cost
     maxLevel: 5,
     apply: (gs, level) => {
       gs._speedBonus = (gs._speedBonus || 0) + 0.2 * level;
+    }
+  },
+    {
+    id: "resourceField",
+    label: "Resource Field",
+    description: "Increase the number of resources on screen by 1 for each color per level.",
+    cost: (level) => ({ red: 0, green: 3 * (level + 1), blue: 0}),
+    maxLevel: 5,
+    apply: (gs, level) => {
+      gs._resourceFieldBonus = level;
+    }
+  },
+  {
+    id: "critBonus",
+    label: "Critical Gathering",
+    description: "Gain a random chance to get +50% extra resource when gathering. Chance increases by 10% per level.",
+    cost: (level) => ({ red: 3 * (level + 1), green: 0, blue: 0 }),
+    maxLevel: 5,
+    apply: (gs, level) => {
+      gs._critBonus = level;
     }
   },
   {
     id: "speedAndRespawn",
     label: "Speed & Respawn",
     description: "Increases speed by 10% and resources respawn 15% faster per level.",
-    cost: (level) => ({ red: 30 * (level + 1), green: 40 * (level + 1), blue: 20 * (level + 1) }), // Cost scales with level
+    cost: (level) => ({ red: 12 * (level + 1), green: 16 * (level + 1), blue: 8 * (level + 1) }), // Lowered cost
     maxLevel: 3,
     apply: (gs, level) => {
       gs._speedBonus = (gs._speedBonus || 0) + 0.1 * level;
@@ -64,5 +84,4 @@ export const UPGRADES = [
       // Unlock logic handled in App.jsx; this is a marker upgrade.
     }
   },
-  // Add more upgrades as desired
 ];
