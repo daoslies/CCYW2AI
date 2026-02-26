@@ -3,12 +3,12 @@ import { makeNetwork, nnTrainStep, nnForward } from "../engine/nn";
 import { COLORS, decodeOutput } from "../data/colors";
 import NetworkViz from "./NetworkViz";
 import Terrarium from "./Terrarium";
-import Terrarium2 from "./Terrarium2";
 import { UPGRADES } from "../data/upgrades";
 import { QUOTES } from "../data/quotes";
 import { useGibbets } from "../store/gibbetStore.jsx";
 import GibbetRoster from "./GibbetRoster.jsx";
 import Gibbet from "./Gibbet.jsx";
+import { NETWORK_CONFIG_T1, NETWORK_CONFIG_T2 } from "../data/networkConfig.js";
 
 function safeNum(val, fallback = 0) {
   return typeof val === "number" && isFinite(val) ? val : fallback;
@@ -62,20 +62,22 @@ export default function App() {
     ensureTerrariumAssignment,
   } = useGibbets();
 
-  // Get assigned gibbet IDs
+  // Get assigned gibbet IDs (now arrays)
   const trainerGibbetId = activeTrainerId;
-  const terrarium1GibbetId = assignments.t1;
-  const terrarium2GibbetId = assignments.t2;
+  const terrarium1GibbetIds = assignments.t1 || [];
+  const terrarium2GibbetIds = assignments.t2 || [];
 
   // Get gibbet objects
   const trainerGibbet = gibbets.find(g => g.id === trainerGibbetId);
-  const terrarium1Gibbet = gibbets.find(g => g.id === terrarium1GibbetId);
-  const terrarium2Gibbet = gibbets.find(g => g.id === terrarium2GibbetId);
+  // For terrariums, get all assigned gibbets
+  const terrarium1Gibbets = gibbets.filter(g => terrarium1GibbetIds.includes(g.id));
+  const terrarium2Gibbets = gibbets.filter(g => terrarium2GibbetIds.includes(g.id));
 
   // Get networks
   const trainerNetwork = getNetwork(trainerGibbetId);
-  const terrarium1Network = getNetwork(terrarium1GibbetId);
-  const terrarium2Network = terrarium2GibbetId != null ? getNetwork(terrarium2GibbetId) : null;
+  // For terrariums, get all assigned networks
+  const terrarium1Networks = terrarium1Gibbets.map(g => getNetwork(g.id));
+  const terrarium2Networks = terrarium2Gibbets.map(g => getNetwork(g.id));
 
   // Use gibbet meta for trainCount, lossHistory, etc.
   const trainCount = trainerGibbet?.trainCount || 0;
@@ -127,13 +129,12 @@ export default function App() {
     setActiveQuoteLineIdx(0);
   }, [activeQuoteIdx]);
 
-  // When second terrarium is unlocked, ensure a gibbet is assigned to t2
-  useEffect(() => {
-    if (terrariumUpgradeLevels.secondTerrarium >= 1) {
-      ensureTerrariumAssignment("t2");
-    }
-    // Only run when unlock state changes
-  }, [terrariumUpgradeLevels.secondTerrarium, ensureTerrariumAssignment]);
+  // Remove auto-assignment of gibbet to t2 on unlock
+  // useEffect(() => {
+  //   if (terrariumUpgradeLevels.secondTerrarium >= 1) {
+  //     ensureTerrariumAssignment("t2");
+  //   }
+  // }, [terrariumUpgradeLevels.secondTerrarium, ensureTerrariumAssignment]);
 
   const UI_ZOOM = 1.4; // must match index.css html { zoom }
 
@@ -160,6 +161,18 @@ export default function App() {
       }
     }
   }, [upgradesSidebar]);
+
+  // Merge upgrade levels from any terrarium
+  const handleTerrariumUpgradeLevelsChange = useCallback((levels) => {
+    setTerrariumUpgradeLevels(prev => {
+      // Always use the highest value for each upgrade
+      const merged = { ...prev };
+      for (const key in levels) {
+        merged[key] = Math.max(levels[key] || 0, prev[key] || 0);
+      }
+      return merged;
+    });
+  }, []);
 
   const handlePress = (pressedColor) => {
     const net = trainerNetwork;
@@ -255,11 +268,11 @@ export default function App() {
         <GibbetBioPanel />
         <div style={{ width: "100%", maxWidth: 400, margin: "0 auto 18px auto" }}>
           {/* Show network viz for active terrarium only */}
-          {view === "terrarium" && terrariumUpgradeLevels.secondTerrarium >= 1 && activeTerrarium === 2 && terrarium2Network ? (
+          {view === "terrarium" && terrariumUpgradeLevels.secondTerrarium >= 1 && activeTerrarium === 2 ? (
             <NetworkViz
-              network={terrarium2Network}
+              network={terrarium2Networks && terrarium2Networks.length > 0 ? terrarium2Networks[0] : null}
               inputValue={terrarium2Indicator.oneHot}
-              animTrigger={terrarium2Gibbet?.trainCount || 0}
+              animTrigger={terrarium2Gibbets?.trainCount || 0}
               style={{ width: "100%", height: "auto", maxWidth: 400, aspectRatio: "1.06" }}
             />
           ) : (
@@ -597,13 +610,14 @@ export default function App() {
                 }}
               >
                 <Terrarium
-                  ref={terrariumRef}
-                  network={terrarium1Network}
+                  slot="t1"
+                  config={NETWORK_CONFIG_T1}
                   onIndicatorChange={setTerrariumIndicator}
                   onResourceCounters={setTerrariumResourceCounters}
                   onTrainingPanel={setTerrariumTrainingPanel}
                   onUpgradesSidebar={setUpgradesSidebar}
-                  onUpgradeLevelsChange={setTerrariumUpgradeLevels}
+                  onUpgradeLevelsChange={handleTerrariumUpgradeLevelsChange}
+                  parentUpgradeLevels={terrariumUpgradeLevels}
                 />
                 {/* Terrarium 1 training panel, only if active */}
                 {activeTerrarium === 1 && terrariumTrainingPanel}
@@ -628,11 +642,15 @@ export default function App() {
                       marginBottom: 24
                     }}
                   >
-                    <Terrarium2
-                      ref={terrarium2Ref}
-                      network={terrarium2Network}
+                    <Terrarium
+                      slot="t2"
+                      config={NETWORK_CONFIG_T2}
                       onIndicatorChange={setTerrarium2Indicator}
+                      onResourceCounters={setTerrariumResourceCounters}
                       onTrainingPanel={setTerrarium2TrainingPanel}
+                      onUpgradesSidebar={setUpgradesSidebar}
+                      onUpgradeLevelsChange={handleTerrariumUpgradeLevelsChange}
+                      parentUpgradeLevels={terrariumUpgradeLevels}
                     />
                     {/* Terrarium 2 training panel, only if active */}
                     {activeTerrarium === 2 && terrarium2TrainingPanel}

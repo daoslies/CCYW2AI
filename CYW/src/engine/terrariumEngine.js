@@ -98,26 +98,34 @@ export function applyAllUpgrades(gs, upgradeLevels, UPGRADES) {
   gs.resourceRespawnMs = 650 * (1 - (gs._respawnBonus || 0));
 }
 
-// Add resource collection history and rate calculation to gs
-export function makeGS(network, upgradeLevels = {}, UPGRADES = [], config = {}) {
+// GibbetState: per-gibbet state managed by engine
+function makeGibbetState(meta = {}) {
+  return {
+    x: TW / 2, y: GROUND_Y - 68, angle: 0, state: "idle", happyUntil: 0,
+    target: null, harvestTarget: null, harvestStarted: null,
+    sniffingUntil: null, lastNNTick: 0, poisonedUntil: null,
+    harvestProgress: 0,
+    ...meta,
+  };
+}
+
+// Updated makeGS: no gs.gibbet, instead gs.gibbetStates: Map
+export function makeGS(upgradeLevels = {}, UPGRADES = [], config = {}) {
   const gs = {
-    gibbet: { x: TW / 2, y: GROUND_Y - 68, angle: 0, state: "idle", happyUntil: 0 },
-    resources: [], // will be set below
+    gibbetStates: new Map(), // gibbetId -> GibbetState
+    resources: [],
     indicator: COLORS[Math.floor(Math.random() * 3)],
-    target: null,
-    network,
+    target: null, // legacy, not used
     collections: { red: 0, green: 0, blue: 0 },
-    collectionHistory: { red: [], green: [], blue: [] }, // timestamps of collections
+    collectionHistory: { red: [], green: [], blue: [] },
     correct: 0, total: 0,
     trainCount: 0, lastLoss: null, lossHistory: [],
     sparkles: [],
-    lastNNTick: 0,
     lastIndicatorChange: Date.now(),
     lastFrame: Date.now(),
     upgradeLevels: { ...upgradeLevels },
     gibbetSpeed: BASE_GIBBET_SPEED,
     resourceRespawnMs: 650,
-    // Weather
     weather: 0,
     weatherPhase: Math.random() * Math.PI * 2,
     config,
@@ -127,173 +135,75 @@ export function makeGS(network, upgradeLevels = {}, UPGRADES = [], config = {}) 
   return gs;
 }
 
-// Build input vector for the network given current gs state
-export function buildInputVec(gs) {
-  if (gs.config.hasWeather) {
-    // 4-element: one-hot(indicator) + weather scalar
-    return [...gs.indicator.oneHot, gs.weather];
-  }
-  return gs.indicator.oneHot;
-}
-
-export function snapshot(gs) {
-  const now = Date.now();
-  const t = now * 0.002;
-  const breathPhase = (Math.sin(t) + 1) / 2;
-  const breath = Math.pow(breathPhase, 1.7);
-  const bob = gs.gibbet.state === "idle" ? -4.5 * breath : 0;
-  // Add gainEvent to snapshot if resource was just collected
-  let gainEvent = null;
-  if (gs._lastGain && now - gs._lastGain.time < 120) {
-    gainEvent = { ...gs._lastGain };
-  }
-  return {
-    now,
-    cx: gs.gibbet.x, cy: gs.gibbet.y + bob,
-    cAngle: gs.gibbet.angle, cState: gs.gibbet.state,
-    resources: gs.resources.map(r => ({ ...r })),
-    sparkles: gs.sparkles.map(s => ({ ...s })),
-    indicator: gs.indicator,
-    target: gs.target ? { ...gs.target } : null,
-    collections: { ...gs.collections },
-    correct: gs.correct, total: gs.total,
-    trainCount: gs.trainCount, lastLoss: gs.lastLoss,
-    lossHistory: gs.lossHistory.slice(),
-    poisonedUntil: gs.poisonedUntil || 0,
-    weather: gs.weather ?? 0,
-    config: gs.config,
-    gainEvent,
-  };
-}
-
-// Is this collection a "correct" (safe) one given weather inversion?
-export function isCorrectCollection(colorId, indicatorId, config, weather) {
-  const inverted = config.hasWeather &&
-    weather > (config.weatherInvertThreshold ?? 0.6);
-  const matchesIndicator = colorId === indicatorId;
-  // Normal: correct = matches indicator
-  // Inverted: correct = does NOT match indicator
-  return inverted ? !matchesIndicator : matchesIndicator;
-}
-
-export function evalNN(gs, gibbetId = 0) {
-  const inputVec = buildInputVec(gs);
-  const probs = nnForward(gs.network, inputVec);
-  if (!Array.isArray(probs) || probs.length !== 3 || probs.some(v => !isFinite(v))) {
-    gs.target = null; return;
-  }
-  const idx = probs.indexOf(Math.max(...probs));
-  if (idx === -1 || !COLORS[idx]) { gs.target = null; return; }
-  const colorId = COLORS[idx].id;
-  const g = gs.gibbet;
-  // Filter out resources claimed by other gibbets
-  const candidates = gs.resources.filter(r => r.colorId === colorId && r.state === "active" && (r.claimedBy === null || r.claimedBy === gibbetId));
-  if (!candidates.length) { gs.target = null; return; }
-  const nearest = candidates.reduce((best, r) =>
-    Math.hypot(r.x - g.x, r.y - g.y) < Math.hypot(best.x - g.x, best.y - g.y) ? r : best);
-  nearest.claimedBy = gibbetId;
-  gs.target = { resourceId: nearest.id, x: nearest.x, y: nearest.y, colorId };
-  gs.sniffingUntil = Date.now() + 300 + Math.random() * 400;
-}
-
-export function gameTick(gs, UPGRADES_LIST) {
-  const now = Date.now();
-  const dt = Math.min((now - gs.lastFrame) / 1000, 0.08);
-  gs.lastFrame = now;
-  const g = gs.gibbet;
-
-  // Weather update — slow organic drift
-  if (gs.config.hasWeather) {
-    gs.weatherPhase += dt * 0.18;
-    // Layered sines for organic feel, clamped 0-1
-    gs.weather = Math.max(0, Math.min(1,
-      0.5 + 0.38 * Math.sin(gs.weatherPhase) + 0.14 * Math.sin(gs.weatherPhase * 2.7)
-    ));
-  }
-
-  // Rotate indicator
-  if (now - gs.lastIndicatorChange > INDICATOR_MS) {
-    gs.lastIndicatorChange = now;
-    const pool = COLORS.filter(col => col.id !== gs.indicator.id);
-    gs.indicator = pool[Math.floor(Math.random() * pool.length)];
-    gs.lastNNTick = 0;
-  }
-
+// Extracted per-gibbet logic
+function tickGibbet(gs, g, gibbetId, network, now, dt) {
+  if (!network) return;
+  console.log('[tickGibbet] Ticking gibbet', gibbetId, 'state:', g.state, 'x:', g.x, 'y:', g.y);
   // NN re-evaluation
-  if (now - gs.lastNNTick > NN_TICK_MS) {
-    gs.lastNNTick = now;
-    evalNN(gs);
+  if (now - g.lastNNTick > NN_TICK_MS) {
+    g.lastNNTick = now;
+    evalNN(gs, g, gibbetId, network);
   }
-
-  // Move gibbet
-  if (gs.target) {
-    // Sniffing pause before moving
-    if (gs.sniffingUntil && now < gs.sniffingUntil) {
+  // Move gibbet and handle collection
+  if (g.target) {
+    if (g.sniffingUntil && now < g.sniffingUntil) {
       g.angle += Math.sin(now * 0.018) * 0.08;
       g.state = "sniffing";
     } else {
-      const dx = gs.target.x - g.x;
-      const dy = gs.target.y - g.y;
+      const dx = g.target.x - g.x;
+      const dy = g.target.y - g.y;
       const d = Math.hypot(dx, dy);
-      // Harvesting duration
       if (d < COLLECT_DIST) {
-        // Start harvesting if not already
-        if (g.harvestTarget !== gs.target.resourceId) {
-          g.harvestTarget = gs.target.resourceId;
+        if (g.harvestTarget !== g.target.resourceId) {
+          g.harvestTarget = g.target.resourceId;
           g.harvestStarted = now;
           g.state = "harvesting";
         }
         const HARVEST_MS = 800;
         const harvestProgress = (now - g.harvestStarted) / HARVEST_MS;
-        gs.harvestTarget = g.harvestTarget;
-        gs.harvestProgress = Math.min(1, harvestProgress);
+        g.harvestProgress = Math.min(1, harvestProgress);
         if (harvestProgress >= 1) {
-          const res = gs.resources.find(r => r.id === gs.target.resourceId);
+          const res = gs.resources.find(r => r.id === g.target.resourceId);
           if (res && res.state === "active") {
             res.state = "fading"; res.stateAt = now;
             res.claimedBy = null;
             const col = COLORS.find(col => col.id === res.colorId);
             gs.sparkles.push(...makeSparkle(res.x, res.y, col.hex, now));
             const correct = isCorrectCollection(
-              gs.target.colorId, gs.indicator.id, gs.config, gs.weather
+              g.target.colorId, gs.indicator.id, gs.config, gs.weather
             );
             if (correct) {
               let bonus = 0;
-              if (gs.target.colorId === "red")   bonus = gs._redGatherBonus || 0;
-              if (gs.target.colorId === "green") bonus = gs._greenGatherBonus || 0;
-              if (gs.target.colorId === "blue")  bonus = gs._blueGatherBonus || 0;
+              if (g.target.colorId === "red")   bonus = gs._redGatherBonus || 0;
+              if (g.target.colorId === "green") bonus = gs._greenGatherBonus || 0;
+              if (g.target.colorId === "blue")  bonus = gs._blueGatherBonus || 0;
               let crit = false;
               let amount = 1 + bonus;
-              // Check for critical gathering (50% bonus)
               if (gs._criticalGather && Math.random() < gs._criticalGather) {
                 crit = true;
                 amount = Math.round(amount * 1.5);
               }
-              gs.collections[gs.target.colorId] += amount;
-              gs.collectionHistory[gs.target.colorId].push(now);
+              gs.collections[g.target.colorId] += amount;
+              gs.collectionHistory[g.target.colorId].push(now);
               gs.total++; gs.correct++;
               g.state = "happy"; g.happyUntil = now + 750;
-              gs.lastNNTick = now + 600;
-              // Track last gain for popup, include crit
-              gs._lastGain = {
-                colorId: gs.target.colorId,
+              g._lastGain = {
+                colorId: g.target.colorId,
                 amount,
                 time: now,
                 hex: col.hex,
                 crit,
               };
             } else {
-              gs.poisonedUntil = now + 700;
+              g.poisonedUntil = now + 700;
               g.state = "poisoned"; g.happyUntil = now + 700;
               gs.sparkles.push(...makeSparkle(res.x, res.y, "#ef4444", now));
             }
             const cid = res.colorId;
             setTimeout(() => {
-              // Use spawnResource for respawn placement (interspersed)
               const newPos = spawnResource(res.colorId);
               res.x = newPos.x;
               res.y = newPos.y;
-              // If resource field bonus increased, add new resources
               if (gs._resourceFieldBonus && gs.resources.length < COLORS.length * (1 + gs._resourceFieldBonus)) {
                 gs.resources.push(spawnResource(res.colorId));
               }
@@ -302,21 +212,16 @@ export function gameTick(gs, UPGRADES_LIST) {
             }, 650);
           }
           g.harvestTarget = null;
-          gs.target = null;
-          gs.harvestTarget = null;
-          gs.harvestProgress = 0;
+          g.target = null;
+          g.harvestProgress = 0;
         }
-        // else: stay in place, keep harvesting
       } else {
-        g.harvestTarget = null; // moved away, cancel harvest
-        gs.harvestTarget = null;
-        gs.harvestProgress = 0;
-        // Path wandering
+        g.harvestTarget = null;
+        g.harvestProgress = 0;
         const perpX = -dy / d;
         const perpY = dx / d;
         const driftAmp = Math.min(d * 0.15, 12);
         const drift = driftAmp * Math.sin(now * 0.004 + g.x * 0.05);
-        // Speed variation
         const targetSpeed = gs.gibbetSpeed;
         const distFactor = Math.min(1, d / 60);
         const nearFactor = Math.min(1, d / COLLECT_DIST / 1.5);
@@ -339,18 +244,123 @@ export function gameTick(gs, UPGRADES_LIST) {
     }
     if (g.state !== "happy" && g.state !== "poisoned") g.state = "idle";
     g.harvestTarget = null;
-    gs.harvestTarget = null;
-    gs.harvestProgress = 0;
+    g.harvestProgress = 0;
   }
-
   if (g.state === "happy"   && now >= g.happyUntil)  g.state = "idle";
-  if (g.state === "poisoned" && now >= (gs.poisonedUntil || 0)) g.state = "idle";
-  gs.sparkles = gs.sparkles.filter(s => now - s.born < 600);
+  if (g.state === "poisoned" && now >= (g.poisonedUntil || 0)) g.state = "idle";
+}
 
+// Updated evalNN: per-gibbet
+function evalNN(gs, g, gibbetId, network) {
+  const inputVec = buildInputVec(gs);
+  const probs = nnForward(network, inputVec);
+  if (!Array.isArray(probs) || probs.length !== 3 || probs.some(v => !isFinite(v))) {
+    g.target = null; return;
+  }
+  const idx = probs.indexOf(Math.max(...probs));
+  if (idx === -1 || !COLORS[idx]) { g.target = null; return; }
+  const colorId = COLORS[idx].id;
+  // Filter out resources claimed by other gibbets
+  const candidates = gs.resources.filter(r => r.colorId === colorId && r.state === "active" && (r.claimedBy === null || r.claimedBy === gibbetId));
+  if (!candidates.length) { g.target = null; return; }
+  const nearest = candidates.reduce((best, r) =>
+    Math.hypot(r.x - g.x, r.y - g.y) < Math.hypot(best.x - g.x, best.y - g.y) ? r : best);
+  nearest.claimedBy = gibbetId;
+  g.target = { resourceId: nearest.id, x: nearest.x, y: nearest.y, colorId };
+  console.log('[evalNN] Gibbet', gibbetId, 'target set:', g.target);
+  g.sniffingUntil = Date.now() + 300 + Math.random() * 400;
+}
+
+// Updated gameTick: accepts gibbetEntries [{id, network, meta}]
+export function gameTick(gs, gibbetEntries, UPGRADES_LIST) {
+  const now = Date.now();
+  const dt = Math.min((now - gs.lastFrame) / 1000, 0.08);
+  gs.lastFrame = now;
+  // Weather update
+  if (gs.config.hasWeather) {
+    gs.weatherPhase += dt * 0.18;
+    gs.weather = Math.max(0, Math.min(1,
+      0.5 + 0.38 * Math.sin(gs.weatherPhase) + 0.14 * Math.sin(gs.weatherPhase * 2.7)
+    ));
+  }
+  // Rotate indicator
+  if (now - gs.lastIndicatorChange > INDICATOR_MS) {
+    gs.lastIndicatorChange = now;
+    const pool = COLORS.filter(col => col.id !== gs.indicator.id);
+    gs.indicator = pool[Math.floor(Math.random() * pool.length)];
+    // Reset all gibbets' lastNNTick
+    for (const g of gs.gibbetStates.values()) g.lastNNTick = 0;
+  }
+  // Tick all assigned gibbets
+  for (const { id, network, meta } of gibbetEntries) {
+    // Defensive: only process real gibbet IDs (numbers)
+    if (typeof id !== 'number') continue;
+    let g = gs.gibbetStates.get(id);
+    if (!g) {
+      g = makeGibbetState(meta);
+      gs.gibbetStates.set(id, g);
+    }
+    tickGibbet(gs, g, id, network, now, dt);
+  }
+  // Remove unassigned gibbets from state
+  const assignedIds = new Set(gibbetEntries.map(e => e.id));
+  for (const id of Array.from(gs.gibbetStates.keys())) {
+    if (!assignedIds.has(id)) gs.gibbetStates.delete(id);
+  }
+  // Sparkles cleanup
+  gs.sparkles = gs.sparkles.filter(s => now - s.born < 600);
   // Prune collection history to last 60s
   for (const col of COLORS) {
     gs.collectionHistory[col.id] = gs.collectionHistory[col.id].filter(ts => now - ts < 60000);
   }
+}
+
+// Updated snapshot: emit gibbets[]
+export function snapshot(gs) {
+  const now = Date.now();
+  const t = now * 0.002;
+  const breathPhase = (Math.sin(t) + 1) / 2;
+  const breath = Math.pow(breathPhase, 1.7);
+  // Add gainEvent to snapshot if resource was just collected (per gibbet)
+  let gainEvents = [];
+  for (const [id, g] of gs.gibbetStates.entries()) {
+    if (g._lastGain && now - g._lastGain.time < 120) {
+      gainEvents.push({ ...g._lastGain, id });
+    }
+  }
+  const snap = {
+    now,
+    gibbets: Array.from(gs.gibbetStates.entries()).map(([id, g]) => ({
+      id,
+      x: g.x,
+      y: g.y + (g.state === "idle" ? -4.5 * breath : 0),
+      angle: g.angle,
+      state: g.state,
+      harvestProgress: g.harvestProgress,
+      poisonedUntil: g.poisonedUntil || 0,
+      gainEvent: gainEvents.find(e => e.id === id) || null,
+    })),
+    resources: gs.resources.map(r => ({ ...r })),
+    sparkles: gs.sparkles.map(s => ({ ...s })),
+    indicator: gs.indicator,
+    collections: { ...gs.collections },
+    correct: gs.correct, total: gs.total,
+    trainCount: gs.trainCount, lastLoss: gs.lastLoss,
+    lossHistory: gs.lossHistory.slice(),
+    weather: gs.weather ?? 0,
+    config: gs.config,
+  };
+  console.log('[snapshot] gibbets:', snap.gibbets);
+  return snap;
+}
+
+// Build input vector for the network given current gs state
+export function buildInputVec(gs) {
+  if (gs.config.hasWeather) {
+    // 4-element: one-hot(indicator) + weather scalar
+    return [...gs.indicator.oneHot, gs.weather];
+  }
+  return gs.indicator.oneHot;
 }
 
 // Helper to get resource rate per second for each color
@@ -362,4 +372,14 @@ export function getResourceRate(gs) {
     rates[col.id] = arr.length / 60;
   }
   return rates;
+}
+
+// Is this collection a "correct" (safe) one given weather inversion?
+export function isCorrectCollection(colorId, indicatorId, config, weather) {
+  const inverted = config.hasWeather &&
+    weather > (config.weatherInvertThreshold ?? 0.6);
+  const matchesIndicator = colorId === indicatorId;
+  // Normal: correct = matches indicator
+  // Inverted: correct = does NOT match indicator
+  return inverted ? !matchesIndicator : matchesIndicator;
 }

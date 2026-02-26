@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef } from "react";
+import { createContext, useContext, useState, useRef, useCallback } from "react";
 import { makeNetwork } from "../engine/nn";
 import { NETWORK_CONFIG_T1, NETWORK_CONFIG_T2 } from "../data/networkConfig";
 
@@ -25,16 +25,21 @@ export function GibbetProvider({ children }) {
   });
 
   const networkMapRef = useRef(new Map());
-  const getNetwork = useCallback((id) => {
+  const getNetwork = (id) => {
+    console.log('[getNetwork] called for id:', id, 'current gibbets:', gibbets);
     if (!networkMapRef.current.has(id)) {
       const gibbet = gibbets.find(g => g.id === id);
       const config = gibbet?.config ?? NETWORK_CONFIG_T1;
+      console.log(`[getNetwork] Creating network for gibbet ${id} with config`, config);
       networkMapRef.current.set(id, makeNetwork(config.layers));
+    } else {
+      console.log(`[getNetwork] Fetched existing network for gibbet ${id}`);
     }
     return networkMapRef.current.get(id);
-  }, [gibbets]);
+  };
 
-  const [assignments, setAssignments] = useState({ t1: 0, t2: null });
+  // Assignments now use arrays for multi-gibbet support
+  const [assignments, setAssignments] = useState({ t1: [], t2: [] });
   const [activeTrainerId, setActiveTrainerId] = useState(0);
   const [selectedGibbetId, setSelectedGibbetId] = useState(0); // default to first gibbet
 
@@ -49,8 +54,25 @@ export function GibbetProvider({ children }) {
     setGibbets(prev => prev.map(g => g.id === id ? { ...g, ...patch } : g));
   }, []);
 
+  // Assign a gibbet to a slot (add to array, no duplicates)
   const assignGibbet = useCallback((slot, gibbetId) => {
-    setAssignments(prev => ({ ...prev, [slot]: gibbetId }));
+    if (gibbetId != null) {
+      const net = getNetwork(gibbetId); // Ensure network exists
+      console.log(`[assignGibbet] Assigning gibbet ${gibbetId} to slot ${slot}. Network exists:`, !!net);
+    }
+    setAssignments(prev => {
+      const arr = prev[slot] || [];
+      if (arr.includes(gibbetId)) return prev; // already assigned
+      return { ...prev, [slot]: [...arr, gibbetId] };
+    });
+  }, [getNetwork]);
+
+  // Unassign a gibbet from a slot
+  const unassignGibbet = useCallback((slot, gibbetId) => {
+    setAssignments(prev => {
+      const arr = prev[slot] || [];
+      return { ...prev, [slot]: arr.filter(id => id !== gibbetId) };
+    });
   }, []);
 
   const resetGibbet = useCallback((id) => {
@@ -62,20 +84,11 @@ export function GibbetProvider({ children }) {
 
   const selectGibbet = useCallback((id) => setSelectedGibbetId(id), []);
 
-  // Ensures a gibbet is assigned to a slot (e.g., t2) if not already assigned
-  // Only assigns an existing unassigned gibbet; never creates a new one automatically
+  // No more auto-assignment: just ensure slot is initialized as empty array
   const ensureTerrariumAssignment = useCallback((slot) => {
     setAssignments(prev => {
-      if (prev[slot] != null && gibbets.some(g => g.id === prev[slot])) return prev;
-      // Try to find an unassigned gibbet
-      const assignedIds = Object.values(prev).filter(x => x != null);
-      const unassigned = gibbets.find(g => !assignedIds.includes(g.id));
-      if (unassigned) {
-        return { ...prev, [slot]: unassigned.id };
-      } else {
-        // No unassigned gibbet; leave slot empty
-        return { ...prev, [slot]: null };
-      }
+      if (Array.isArray(prev[slot])) return prev;
+      return { ...prev, [slot]: [] };
     });
   }, [gibbets]);
 
@@ -88,6 +101,7 @@ export function GibbetProvider({ children }) {
       addGibbet,
       updateGibbetMeta,
       assignGibbet,
+      unassignGibbet,
       resetGibbet,
       setActiveTrainerId,
       selectedGibbetId,

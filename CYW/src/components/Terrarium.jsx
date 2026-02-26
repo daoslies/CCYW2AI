@@ -25,19 +25,29 @@ export default function Terrarium({
   onResourceCounters,
   onTrainingPanel,
   onUpgradesSidebar,
-  onUpgradeLevelsChange // <-- new prop
+  onUpgradeLevelsChange, // <-- new prop
+  parentUpgradeLevels // <-- new prop
 }) {
   const { assignments, getNetwork, gibbets, updateGibbetMeta, selectedGibbetId, selectGibbet } = useGibbets();
-  const gibbetId = assignments[slot];
-  const gibbet = gibbets.find(g => g.id === gibbetId);
-  const network = gibbetId != null ? getNetwork(gibbetId) : null;
+  // Get all assigned gibbet IDs for this slot
+  const gibbetIds = assignments[slot] || [];
+  // Build gibbetEntries for all assigned gibbets with networks
+  const gibbetEntries = gibbetIds
+    .map(id => {
+      const gibbet = gibbets.find(g => g.id === id);
+      const network = gibbet ? getNetwork(gibbet.id) : null;
+      return gibbet && network ? { id: gibbet.id, network } : null;
+    })
+    .filter(Boolean);
 
   // Upgrades state
   const [upgradeLevels, setUpgradeLevels] = useState({});
+  // Use parentUpgradeLevels for upgrade panel counter if provided
+  const effectiveUpgradeLevels = parentUpgradeLevels || upgradeLevels;
   // Game state lives in a ref
   const gsRef = useRef(null);
   if (!gsRef.current) {
-    gsRef.current = makeGS(network, upgradeLevels, UPGRADES, config);
+    gsRef.current = makeGS(upgradeLevels, UPGRADES, config);
   }
   const [snap, setSnap] = useState(() => snapshot(gsRef.current));
 
@@ -64,16 +74,16 @@ export default function Terrarium({
     let running = true;
     function tick() {
       if (!running) return;
-      gameTick(gsRef.current, UPGRADES, config);
+      gameTick(gsRef.current, gibbetEntries, UPGRADES, config);
       setSnap(snapshot(gsRef.current));
       requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
     return () => { running = false; };
-  }, []); // Only run once on mount
+  }, [gibbetIds.join(), gibbets.length, config]); // rerun if assignments or gibbets change
 
   function handleReset() {
-    gsRef.current = makeGS(network, upgradeLevels, UPGRADES, config);
+    gsRef.current = makeGS(upgradeLevels, UPGRADES, config);
     setSnap(snapshot(gsRef.current));
   }
 
@@ -188,7 +198,7 @@ export default function Terrarium({
         <div style={{ width: "100%", maxWidth: 320, display: "flex", flexDirection: "column", gap: 18 }}>
           <h3 style={{ color: "#b6e3ff", fontSize: 13, fontWeight: 600, margin: "24px 0 10px 0", letterSpacing: "0.08em" }}>Upgrades</h3>
           {UPGRADES.map(upg => {
-            const lvl = upgradeLevels[upg.id] || 0;
+            const lvl = effectiveUpgradeLevels[upg.id] || 0;
             const maxed = upg.maxLevel && lvl >= upg.maxLevel;
             const cost = typeof upg.cost === "function" ? upg.cost(lvl) : upg.cost;
             // Check affordability
@@ -235,7 +245,7 @@ export default function Terrarium({
                     <>
                       <br />
                       <span style={{ color: "#ffe066", fontWeight: 600 }}>
-                        Current crit chance: {((upgradeLevels["critBonus"] || 0) * 10).toFixed(0)}%
+                        Current crit chance: {((effectiveUpgradeLevels["critBonus"] || 0) * 10).toFixed(0)}%
                       </span>
                     </>
                   )}
@@ -247,7 +257,7 @@ export default function Terrarium({
         </div>
       );
     }
-  }, [snap, upgradeLevels, onUpgradesSidebar]);
+  }, [snap, effectiveUpgradeLevels, onUpgradesSidebar]);
 
   // Notify parent of upgrade level changes
   useEffect(() => {
@@ -284,15 +294,18 @@ export default function Terrarium({
     setSnap(snapshot(gs));
   }
 
+  // Defensive: always render container, even if no gibbets assigned
+  const hasGibbets = gibbetEntries.length > 0;
+
   return (
     <div
       style={{
         width: "100%",
         maxWidth: 540,
         borderRadius: 20,
-        border: selectedGibbetId === gibbetId ? "3px solid #7dd3fc" : "2px solid rgba(140,200,255,0.13)",
+        border: selectedGibbetId === gibbetIds[0] ? "3px solid #7dd3fc" : "2px solid rgba(140,200,255,0.13)",
         boxShadow: [
-          selectedGibbetId === gibbetId ? "0 0 0 4px #7dd3fc44" : "0 0 0 1px rgba(100,150,255,0.06)",
+          selectedGibbetId === gibbetIds[0] ? "0 0 0 4px #7dd3fc44" : "0 0 0 1px rgba(100,150,255,0.06)",
           "inset 0 0 30px rgba(0,20,60,0.4)",
           "inset 0 -10px 28px rgba(0,0,0,0.55)",
           "inset 2px 0 12px rgba(0,0,0,0.3)",
@@ -309,17 +322,24 @@ export default function Terrarium({
         transition: "border 0.18s, box-shadow 0.18s"
       }}
     >
-      {/* Render the gibbet as a clickable entity inside the terrarium */}
-      {gibbet ? (
-        <div style={{ position: "absolute", left: "50%", top: "80%", transform: "translate(-50%, -50%)", zIndex: 2 }}>
-          <Gibbet
-            gibbet={gibbet}
-            selected={selectedGibbetId === gibbet.id}
-            onClick={() => selectGibbet(gibbet.id)}
-          />
+      {/* Render all assigned gibbets as clickable entities inside the terrarium */}
+      {hasGibbets ? gibbetEntries.map(({ id }) => {
+        const gibbet = gibbets.find(g => g.id === id);
+        return gibbet ? (
+          <div key={id} style={{ position: "absolute", left: "50%", top: "80%", transform: "translate(-50%, -50%)", zIndex: 2 }}>
+            <Gibbet
+              gibbet={gibbet}
+              selected={selectedGibbetId === gibbet.id}
+              onClick={() => selectGibbet(gibbet.id)}
+            />
+          </div>
+        ) : null;
+      }) : (
+        <div style={{ width: "100%", height: 180, display: "flex", alignItems: "center", justifyContent: "center", color: "#38bdf8", fontSize: 16, opacity: 0.7 }}>
+          No gibbets assigned
         </div>
-      ) : null}
-      {network && <TerrariumScene snap={snap} />}
+      )}
+      {hasGibbets && <TerrariumScene snap={snap} />}
       {/* Glass edge radial vignette overlay */}
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", borderRadius: 20, background: "radial-gradient(ellipse at 28% 12%, rgba(255,255,255,0.018) 0%, transparent 55%)" }} />
     </div>

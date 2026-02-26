@@ -111,10 +111,17 @@ export default function NetworkViz({ network, inputValue, animTrigger }) {
     return () => { if (waveRef.current) clearTimeout(waveRef.current); };
   }, [animTrigger]);
 
+  // Defensive: always run all hooks, then conditionally render placeholder
+  const isNetworkValid = network && network.layers;
+
   const { activations, weights } = useMemo(
-    () => getNetworkState(network, inputValue ?? [0,0,0]),
-    [network, inputValue, animTrigger]
+    () => isNetworkValid ? getNetworkState(network, inputValue ?? [0,0,0]) : { activations: [], weights: [] },
+    [network, inputValue, animTrigger, isNetworkValid]
   );
+
+  if (!isNetworkValid) {
+    return <div style={{ width: "100%", height: 120, display: "flex", alignItems: "center", justifyContent: "center", color: "#38bdf8", fontSize: 15, opacity: 0.7 }}>No network assigned</div>;
+  }
 
   const maxWeights = weights.map(W =>
     Math.max(...W.flat().map(Math.abs), 1e-9)

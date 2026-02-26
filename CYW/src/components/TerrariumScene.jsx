@@ -6,38 +6,47 @@ import Resource from "./Resource";
 import Sparkle from "./Sparkle";
 
 export function TerrariumScene({ snap }) {
-  const { now, cx, cy, cAngle, cState, resources, sparkles, target } = snap;
-  const poisonAge = snap.poisonedUntil
-    ? Math.max(0, 1 - (now - (snap.poisonedUntil - 700)) / 700)
-    : 0;
-  const poisoned = poisonAge > 0.01;
+  const { now, gibbets, resources, sparkles, indicator, config, weather } = snap;
 
-  // Floating resource gain popups
-  const [gainPopups, setGainPopups] = useState([]);
+  // Floating resource gain popups per gibbet
+  const [gainPopupsMap, setGainPopupsMap] = useState({});
   const lastGainRef = useRef({});
   useEffect(() => {
-    // Detect new resource gain
-    if (snap.gainEvent) {
-      setGainPopups(pops => [
-        ...pops,
-        {
-          id: `${snap.now}-${snap.gainEvent.colorId}`,
-          amount: snap.gainEvent.amount,
-          time: snap.now,
-          hex: snap.gainEvent.hex,
-        },
-      ]);
-      lastGainRef.current = snap.gainEvent;
+    // Detect new resource gain for each gibbet
+    if (gibbets) {
+      setGainPopupsMap(prev => {
+        const next = { ...prev };
+        for (const g of gibbets) {
+          if (g.gainEvent && g.gainEvent !== lastGainRef.current[g.id]) {
+            next[g.id] = [
+              ...(next[g.id] || []),
+              {
+                id: `${now}-${g.gainEvent.colorId}`,
+                amount: g.gainEvent.amount,
+                time: now,
+                hex: g.gainEvent.hex,
+              },
+            ];
+            lastGainRef.current[g.id] = g.gainEvent;
+          }
+        }
+        return next;
+      });
     }
-  }, [snap.gainEvent, snap.now]);
+  }, [gibbets, now]);
   useEffect(() => {
-    // Remove old popups
-    if (!gainPopups.length) return;
+    // Remove old popups for each gibbet
     const t = setInterval(() => {
-      setGainPopups(pops => pops.filter(p => snap.now - p.time < 900));
+      setGainPopupsMap(prev => {
+        const next = { ...prev };
+        for (const id in next) {
+          next[id] = next[id].filter(p => now - p.time < 900);
+        }
+        return next;
+      });
     }, 200);
     return () => clearInterval(t);
-  }, [gainPopups.length, snap.now]);
+  }, [now]);
 
   return (
     <svg viewBox={`0 0 ${TW} ${TH}`} width="100%" style={{ display: "block" }}>
@@ -60,13 +69,13 @@ export function TerrariumScene({ snap }) {
           <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
         </filter>
         <radialGradient id="indicatorSun" cx="50%" cy="60%" r="60%">
-          <stop offset="0%" stopColor={snap.indicator.hex} stopOpacity="0.22" />
-          <stop offset="60%" stopColor={snap.indicator.hex} stopOpacity="0.10" />
+          <stop offset="0%" stopColor={indicator.hex} stopOpacity="0.22" />
+          <stop offset="60%" stopColor={indicator.hex} stopOpacity="0.10" />
           <stop offset="100%" stopColor="#000" stopOpacity="0.0" />
         </radialGradient>
-        {poisoned && (
+        {gibbets && gibbets.some(g => g.poisonedUntil && now < g.poisonedUntil) && (
           <radialGradient id="poisonBurst" cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor="#ef4444" stopOpacity={0.45 * poisonAge} />
+            <stop offset="0%"   stopColor="#ef4444" stopOpacity="0.45" />
             <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
           </radialGradient>
         )}
@@ -114,32 +123,31 @@ export function TerrariumScene({ snap }) {
         fill="url(#indicatorSun)"
         style={{ mixBlendMode: "lighter" }}
       />
-      {target && (() => {
-        const col = COLORS.find(c => c.id === target.colorId);
-        return (
-          <line x1={cx} y1={cy} x2={target.x} y2={target.y}
-            stroke={col.hex} strokeWidth={0.7}
-            strokeDasharray="4 6" opacity={0.12} />
-        );
-      })()}
       {resources.map(r => (
         <Resource
           key={r.id} r={r} now={now}
           harvestProgress={snap.harvestTarget === r.id ? snap.harvestProgress : 0}
           isCorrect={
-            snap.config?.hasWeather
-              ? isCorrectCollection(r.colorId, snap.indicator.id, snap.config, snap.weather)
-              : r.colorId === snap.indicator.id
+            config?.hasWeather
+              ? isCorrectCollection(r.colorId, indicator.id, config, weather)
+              : r.colorId === indicator.id
           }
           claimedBy={r.claimedBy}
         />
       ))}
       {sparkles.map(s => <Sparkle key={s.id} s={s} now={now} />)}
-      {poisoned && (
-        <ellipse cx={cx} cy={cy} rx={60} ry={50}
-          fill="url(#poisonBurst)" opacity={0.8 * poisonAge} />
-      )}
-      <Gibbet x={cx} y={cy} angle={cAngle} state={cState} poisoned={poisoned} poisonAge={poisonAge} gainPopups={gainPopups} />
+      {gibbets && gibbets.map(g => (
+        <Gibbet
+          key={g.id}
+          x={g.x}
+          y={g.y}
+          angle={g.angle}
+          state={g.state}
+          poisoned={g.poisonedUntil && now < g.poisonedUntil}
+          poisonAge={g.poisonedUntil ? Math.max(0, 1 - (now - (g.poisonedUntil - 700)) / 700) : 0}
+          gainPopups={gainPopupsMap[g.id] || []}
+        />
+      ))}
       <rect x={0} y={0} width={TW} height={TH} fill="url(#gVignette)" />
       <path d={`M 55 9 Q ${TW * 0.42} 3 ${TW - 65} 10`}
         stroke="rgba(200,230,255,0.045)" strokeWidth={1.8} fill="none" />

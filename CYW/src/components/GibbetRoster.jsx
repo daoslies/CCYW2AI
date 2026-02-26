@@ -14,25 +14,25 @@ export default function GibbetRoster() {
     gibbets,
     assignments,
     assignGibbet,
+    unassignGibbet,
     activeTrainerId,
     setActiveTrainerId,
     addGibbet
   } = useGibbets();
 
-  // Helper: find which slot (if any) a gibbet is assigned to
-  function getSlotForGibbet(gibbetId) {
-    return Object.entries(assignments).find(([, id]) => id === gibbetId)?.[0] || null;
+  // Helper: find which slots (if any) a gibbet is assigned to
+  function getSlotsForGibbet(gibbetId) {
+    return Object.entries(assignments)
+      .filter(([, arr]) => Array.isArray(arr) && arr.includes(gibbetId))
+      .map(([slot]) => slot);
   }
 
   function handleAssign(gibbetId, slot) {
     assignGibbet(slot, gibbetId);
   }
 
-  function handleUnassign(gibbetId) {
-    // Unassign from all slots
-    Object.entries(assignments).forEach(([slot, id]) => {
-      if (id === gibbetId) assignGibbet(slot, null);
-    });
+  function handleUnassign(gibbetId, slot) {
+    unassignGibbet(slot, gibbetId);
   }
 
   function handleAcquire() {
@@ -57,7 +57,7 @@ export default function GibbetRoster() {
       <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 12, letterSpacing: 1 }}>GIBBET ROSTER</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {gibbets.map(gibbet => {
-          const slot = getSlotForGibbet(gibbet.id);
+          const assignedSlots = getSlotsForGibbet(gibbet.id);
           return (
             <div key={gibbet.id} style={{
               display: "flex",
@@ -71,20 +71,20 @@ export default function GibbetRoster() {
                 <Gibbet x={safeNum(0)} y={safeNum(0)} angle={safeNum(0)} state="idle" poisoned={false} poisonAge={safeNum(0)} />
               </svg>
               <span style={{ flex: 1 }}>{gibbet.name}</span>
-              <select
-                value={slot || ""}
-                onChange={e => {
-                  const newSlot = e.target.value;
-                  if (newSlot) handleAssign(gibbet.id, newSlot);
-                  else handleUnassign(gibbet.id);
-                }}
-                style={{ borderRadius: 6, padding: "2px 6px", background: "#181828", color: "#e0e0f0" }}
-              >
-                <option value="">──</option>
-                {Object.keys(SLOT_LABELS).map(slotKey => (
-                  <option key={slotKey} value={slotKey}>{SLOT_LABELS[slotKey]}</option>
-                ))}
-              </select>
+              {/* Multi-assign checkboxes for each slot */}
+              {Object.keys(SLOT_LABELS).map(slotKey => (
+                <label key={slotKey} style={{ marginRight: 6, fontSize: 13 }}>
+                  <input
+                    type="checkbox"
+                    checked={assignedSlots.includes(slotKey)}
+                    onChange={e => {
+                      if (e.target.checked) handleAssign(gibbet.id, slotKey);
+                      else handleUnassign(gibbet.id, slotKey);
+                    }}
+                  />
+                  {SLOT_LABELS[slotKey]}
+                </label>
+              ))}
               <button
                 onClick={() => setActiveTrainerId(gibbet.id)}
                 style={{
