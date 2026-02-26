@@ -30,7 +30,7 @@ export const UPGRADES = [
     cost: (level) => ({ red: 3 * (level + 1), green: 0, blue: 0 }),
     maxLevel: 5,
     apply: (gs, level) => {
-      gs._critBonus = level;
+      gs._critBonus = level * 10;
     }
   },
   {
@@ -78,7 +78,7 @@ export const UPGRADES = [
     id: "secondTerrarium",
     label: "Unlock Weather Terrarium",
     description: "Unlocks a second terrarium with weather and new neural network mechanics.",
-    cost: (level) => ({ red: 1, green: 0, blue: 0 }),
+    cost: (level) => ({ red: 0, green: 0, blue: 0 }),
     maxLevel: 1,
     apply: (gs, level) => {
       // Unlock logic handled in App.jsx; this is a marker upgrade.

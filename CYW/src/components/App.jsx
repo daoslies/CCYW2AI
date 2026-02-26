@@ -1,11 +1,47 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { makeNetwork, nnTrainStep, nnForward } from "./nn";
-import { COLORS, decodeOutput } from "./colors";
+import { makeNetwork, nnTrainStep, nnForward } from "../engine/nn";
+import { COLORS, decodeOutput } from "../data/colors";
 import NetworkViz from "./NetworkViz";
 import Terrarium from "./Terrarium";
 import Terrarium2 from "./Terrarium2";
-import { UPGRADES } from "./upgrades";
-import { QUOTES } from "./quotes";
+import { UPGRADES } from "../data/upgrades";
+import { QUOTES } from "../data/quotes";
+import { useGibbets } from "../store/gibbetStore.jsx";
+import GibbetRoster from "./GibbetRoster.jsx";
+import Gibbet from "./Gibbet.jsx";
+
+function safeNum(val, fallback = 0) {
+  return typeof val === "number" && isFinite(val) ? val : fallback;
+}
+
+function GibbetBioPanel() {
+  const { gibbets, selectedGibbetId } = useGibbets();
+  const gibbet = gibbets.find(g => g.id === selectedGibbetId);
+  if (!gibbet) return null;
+  return (
+    <div style={{
+      background: "#181a22",
+      borderRadius: 12,
+      padding: "16px 12px",
+      margin: "0 0 18px 0",
+      width: "100%",
+      boxSizing: "border-box",
+      display: "flex",
+      alignItems: "center",
+      gap: 16,
+      minHeight: 80,
+    }}>
+      {/* Gibbet SVG avatar */}
+      <svg width={56} height={56} viewBox="-20 -10 40 40" style={{ borderRadius: "50%", background: "#222", border: "2px solid #333" }}>
+        <Gibbet x={safeNum(0)} y={safeNum(0)} angle={safeNum(0)} state="idle" poisoned={false} poisonAge={safeNum(0)} />
+      </svg>
+      <div style={{ flex: 1 }}>
+        <div style={{ color: "#7dd3fc", fontWeight: 600, fontSize: 16 }}>{gibbet.name}</div>
+        <div style={{ color: "#aaa", fontSize: 13, marginTop: 2, whiteSpace: "pre-line" }}>{gibbet.bio}</div>
+      </div>
+    </div>
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 8. The training loop in handlePress
@@ -13,18 +49,45 @@ import { QUOTES } from "./quotes";
 // The key flow to keep in your head is: indicator shown → encoded as scalar → fed into network → output decoded back to colour → user presses a button → that becomes the target → 20 backprop steps run → weights update → predictions panel reflects the new state. Everything else is UI around that loop.
 
 export default function App() {
-  const networkRef = useRef(makeNetwork());
-  const terrarium2NetworkRef = useRef(makeNetwork());
+  const {
+    gibbets,
+    assignments,
+    activeTrainerId,
+    getNetwork,
+    updateGibbetMeta,
+    resetGibbet,
+    assignGibbet,
+    setActiveTrainerId,
+    addGibbet,
+    ensureTerrariumAssignment,
+  } = useGibbets();
+
+  // Get assigned gibbet IDs
+  const trainerGibbetId = activeTrainerId;
+  const terrarium1GibbetId = assignments.t1;
+  const terrarium2GibbetId = assignments.t2;
+
+  // Get gibbet objects
+  const trainerGibbet = gibbets.find(g => g.id === trainerGibbetId);
+  const terrarium1Gibbet = gibbets.find(g => g.id === terrarium1GibbetId);
+  const terrarium2Gibbet = gibbets.find(g => g.id === terrarium2GibbetId);
+
+  // Get networks
+  const trainerNetwork = getNetwork(trainerGibbetId);
+  const terrarium1Network = getNetwork(terrarium1GibbetId);
+  const terrarium2Network = terrarium2GibbetId != null ? getNetwork(terrarium2GibbetId) : null;
+
+  // Use gibbet meta for trainCount, lossHistory, etc.
+  const trainCount = trainerGibbet?.trainCount || 0;
+  const lossHistory = trainerGibbet?.lossHistory || [];
+
   const [indicator, setIndicator] = useState(COLORS[Math.floor(Math.random() * 3)]);
   const [terrariumIndicator, setTerrariumIndicator] = useState(COLORS[0]);
   const [terrarium2Indicator, setTerrarium2Indicator] = useState(COLORS[0]);
-  const [trainCount, setTrainCount] = useState(0);
-  const [terrarium2TrainCount, setTerrarium2TrainCount] = useState(0);
   const [lastLoss, setLastLoss] = useState(null);
   const [predictions, setPredictions] = useState(null);   // {red, green, blue} → predicted color
   const [lastPressed, setLastPressed] = useState(null);
   const [flash, setFlash] = useState(null);               // "correct" | "wrong"
-  const [lossHistory, setLossHistory] = useState([]);
   const [view, setView] = useState("trainer");
   const [terrariumResourceCounters, setTerrariumResourceCounters] = useState(null);
   const [terrariumTrainingPanel, setTerrariumTrainingPanel] = useState(null);
@@ -64,17 +127,24 @@ export default function App() {
     setActiveQuoteLineIdx(0);
   }, [activeQuoteIdx]);
 
+  // When second terrarium is unlocked, ensure a gibbet is assigned to t2
+  useEffect(() => {
+    if (terrariumUpgradeLevels.secondTerrarium >= 1) {
+      ensureTerrariumAssignment("t2");
+    }
+    // Only run when unlock state changes
+  }, [terrariumUpgradeLevels.secondTerrarium, ensureTerrariumAssignment]);
+
   const UI_ZOOM = 1.4; // must match index.css html { zoom }
 
   const updatePredictions = useCallback(() => {
     const preds = {};
     for (const c of COLORS) {
-      // ML team: nnForward now takes one-hot input (categorical)
-      const out = nnForward(networkRef.current, c.oneHot);
+      const out = nnForward(trainerNetwork, c.oneHot);
       preds[c.id] = decodeOutput(out); // decodeOutput uses argmax
     }
     setPredictions(preds);
-  }, []);
+  }, [trainerNetwork]);
 
   useEffect(() => { updatePredictions(); }, []);
 
@@ -92,8 +162,7 @@ export default function App() {
   }, [upgradesSidebar]);
 
   const handlePress = (pressedColor) => {
-    const net = networkRef.current;
-    // ML team: Use one-hot encoding as input and as target for cross-entropy
+    const net = trainerNetwork;
     const inputVec = indicator.oneHot;
     const targetVal = pressedColor.oneHot;
 
@@ -105,11 +174,13 @@ export default function App() {
       loss = nnTrainStep(net, inputVec, targetVal, 0.4);
     }
 
-    const newCount = trainCount + 1;
-    setTrainCount(newCount);
+    updateGibbetMeta(trainerGibbetId, {
+      trainCount: trainCount + 1,
+      lossHistory: [...lossHistory.slice(-39), loss],
+    });
+
     setLastLoss(loss);
     setLastPressed(pressedColor);
-    setLossHistory(h => [...h.slice(-39), loss]);
     updatePredictions();
 
     // Flash feedback
@@ -121,11 +192,9 @@ export default function App() {
   };
 
   const handleReset = () => {
-    networkRef.current = makeNetwork();
-    setTrainCount(0);
+    resetGibbet(trainerGibbetId);
     setLastLoss(null);
     setLastPressed(null);
-    setLossHistory([]);
     setFlash(null);
     setIndicator(COLORS[Math.floor(Math.random() * 3)]);
     updatePredictions();
@@ -148,6 +217,8 @@ export default function App() {
   const [terrariumMounted] = useState(true); // always true, for clarity
   const terrariumRef = useRef();
   const terrarium2Ref = useRef();
+
+  const [rightTab, setRightTab] = useState("upgrades"); // "upgrades" or "gibbets"
 
   // --- Center column fixed container ---
   return (
@@ -181,22 +252,25 @@ export default function App() {
         maxHeight: `${100 / UI_ZOOM}vh`,
         overflowY: "auto"
       }}>
+        <GibbetBioPanel />
         <div style={{ width: "100%", maxWidth: 400, margin: "0 auto 18px auto" }}>
           {/* Show network viz for active terrarium only */}
-          {view === "terrarium" && terrariumUpgradeLevels.secondTerrarium >= 1 && activeTerrarium === 2 ? (
+          {view === "terrarium" && terrariumUpgradeLevels.secondTerrarium >= 1 && activeTerrarium === 2 && terrarium2Network ? (
             <NetworkViz
-              network={terrarium2NetworkRef.current}
+              network={terrarium2Network}
               inputValue={terrarium2Indicator.oneHot}
-              animTrigger={terrarium2TrainCount}
+              animTrigger={terrarium2Gibbet?.trainCount || 0}
               style={{ width: "100%", height: "auto", maxWidth: 400, aspectRatio: "1.06" }}
             />
           ) : (
-            <NetworkViz
-              network={networkRef.current}
-              inputValue={view === "trainer" ? indicator.oneHot : terrariumIndicator.oneHot}
-              animTrigger={trainCount}
-              style={{ width: "100%", height: "auto", maxWidth: 400, aspectRatio: "1.06" }}
-            />
+            trainerNetwork && (
+              <NetworkViz
+                network={trainerNetwork}
+                inputValue={view === "trainer" ? indicator.oneHot : terrariumIndicator.oneHot}
+                animTrigger={trainCount}
+                style={{ width: "100%", height: "auto", maxWidth: 400, aspectRatio: "1.06" }}
+              />
+            )
           )}
         </div>
         {/* Resource counters for terrarium mode */}
@@ -524,7 +598,7 @@ export default function App() {
               >
                 <Terrarium
                   ref={terrariumRef}
-                  network={networkRef.current}
+                  network={terrarium1Network}
                   onIndicatorChange={setTerrariumIndicator}
                   onResourceCounters={setTerrariumResourceCounters}
                   onTrainingPanel={setTerrariumTrainingPanel}
@@ -556,10 +630,9 @@ export default function App() {
                   >
                     <Terrarium2
                       ref={terrarium2Ref}
-                      network={terrarium2NetworkRef.current}
+                      network={terrarium2Network}
                       onIndicatorChange={setTerrarium2Indicator}
                       onTrainingPanel={setTerrarium2TrainingPanel}
-                      onTrainCountChange={setTerrarium2TrainCount}
                     />
                     {/* Terrarium 2 training panel, only if active */}
                     {activeTerrarium === 2 && terrarium2TrainingPanel}
@@ -571,7 +644,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* Right: Upgrades sidebar (fixed) */}
+      {/* Right: Upgrades/Gibbet Roster sidebar (fixed) */}
       <div style={{
         width: 280,
         minWidth: 180,
@@ -591,7 +664,50 @@ export default function App() {
         maxHeight: `${100 / UI_ZOOM}vh`,
         overflowY: "auto"
       }}>
-        {upgradesSidebar}
+        {/* Tab buttons */}
+        <div style={{ display: "flex", gap: 0, width: "100%", marginBottom: 18 }}>
+          <button
+            onClick={() => setRightTab("upgrades")}
+            style={{
+              flex: 1,
+              padding: "10px 0",
+              border: "none",
+              borderBottom: rightTab === "upgrades" ? "3px solid #60a5fa" : "1px solid #222",
+              background: rightTab === "upgrades" ? "#181a22" : "#10101a",
+              color: rightTab === "upgrades" ? "#60a5fa" : "#aaa",
+              fontWeight: 600,
+              fontSize: 15,
+              cursor: "pointer",
+              borderTopLeftRadius: 12,
+              borderTopRightRadius: 0
+            }}
+          >
+            Upgrades
+          </button>
+          <button
+            onClick={() => setRightTab("gibbets")}
+            style={{
+              flex: 1,
+              padding: "10px 0",
+              border: "none",
+              borderBottom: rightTab === "gibbets" ? "3px solid #4ade80" : "1px solid #222",
+              background: rightTab === "gibbets" ? "#181a22" : "#10101a",
+              color: rightTab === "gibbets" ? "#4ade80" : "#aaa",
+              fontWeight: 600,
+              fontSize: 15,
+              cursor: "pointer",
+              borderTopLeftRadius: 0,
+              borderTopRightRadius: 12
+            }}
+          >
+            Grow Gibbets
+          </button>
+        </div>
+        {/* Tab content */}
+        <div style={{ width: "100%" }}>
+          {rightTab === "upgrades" ? upgradesSidebar : null}
+          {rightTab === "gibbets" ? <GibbetRoster /> : null}
+        </div>
       </div>
     </div>
   );

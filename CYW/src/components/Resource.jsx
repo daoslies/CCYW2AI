@@ -1,4 +1,4 @@
-import { COLORS } from "./colors";
+import { COLORS } from "../data/colors";
 
 export default function Resource({ r, now, harvestProgress = 0, claimedBy, isCorrect }) {
   const col = COLORS.find(c => c.id === r.colorId);

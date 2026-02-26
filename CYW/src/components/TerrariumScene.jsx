@@ -1,5 +1,5 @@
-import { COLORS } from "./colors";
-import { TW, TH, GROUND_Y, GRASS, PEBBLES, DUST, isCorrectCollection } from "./terrariumEngine";
+import { COLORS } from "../data/colors";
+import { TW, TH, GROUND_Y, GRASS, PEBBLES, DUST, isCorrectCollection } from "../engine/terrariumEngine";
 import { useRef, useEffect, useState } from "react";
 import Gibbet from "./Gibbet";
 import Resource from "./Resource";

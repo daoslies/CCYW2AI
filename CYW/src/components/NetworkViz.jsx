@@ -1,6 +1,6 @@
 import { useMemo, useEffect, useState, useRef } from "react";
-import { COLORS } from "./colors";
-import { NETWORK_LAYERS } from "./networkConfig";
+import { COLORS } from "../data/colors";
+import { NETWORK_LAYERS } from "../data/networkConfig";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NetworkViz — live visualisation of the composed network
@@ -86,6 +86,10 @@ function outputNodeColor(idx, probs) {
 
 const WAVE_STEP_MS = 110;
 
+function safeNum(val, fallback = 0) {
+  return typeof val === "number" && isFinite(val) ? val : fallback;
+}
+
 export default function NetworkViz({ network, inputValue, animTrigger }) {
   const [waveLayer, setWaveLayer] = useState(-1);
   const waveRef = useRef(null);
@@ -146,10 +150,10 @@ export default function NetworkViz({ network, inputValue, animTrigger }) {
             row.map((w, fromIdx) => (
               <line
                 key={`e-${wi}-${toIdx}-${fromIdx}`}
-                x1={fromNodes[fromIdx].x}
-                y1={fromNodes[fromIdx].y}
-                x2={toNodes[toIdx].x}
-                y2={toNodes[toIdx].y}
+                x1={safeNum(fromNodes[fromIdx]?.x)}
+                y1={safeNum(fromNodes[fromIdx]?.y)}
+                x2={safeNum(toNodes[toIdx]?.x)}
+                y2={safeNum(toNodes[toIdx]?.y)}
                 stroke={edgeColor(w, maxW)}
                 strokeWidth={edgeWidth(w, maxW)}
               />
@@ -159,8 +163,10 @@ export default function NetworkViz({ network, inputValue, animTrigger }) {
         {/* Nodes */}
         {DISPLAY_LAYERS.map((n, li) =>
           Array.from({ length: n }, (_, ni) => {
-            const { x, y }   = NODE_POS[li][ni];
-            const act        = activations[li][ni];
+            const pos = NODE_POS[li]?.[ni] || { x: 0, y: 0 };
+            const x = safeNum(pos.x);
+            const y = safeNum(pos.y);
+            const act = activations[li]?.[ni] ?? 0;
             // Output layer: color by class, opacity by probability, highlight winner
             if (li === DISPLAY_LAYERS.length - 1) {
               const probs = activations[li];
@@ -261,7 +267,7 @@ export default function NetworkViz({ network, inputValue, animTrigger }) {
         {LAYER_LABELS.map((label, li) => (
           <text
             key={`lbl-${li}`}
-            x={NODE_POS[li][0].x}
+            x={safeNum(NODE_POS[li][0]?.x)}
             y={LABEL_Y}
             textAnchor="middle"
             fill="#333"

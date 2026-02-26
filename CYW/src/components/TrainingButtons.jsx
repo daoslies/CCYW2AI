@@ -1,4 +1,4 @@
-import { COLORS } from "./colors";
+import { COLORS } from "../data/colors";
 
 export default function TrainingButtons({ onClick }) {
   return (

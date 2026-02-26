@@ -1,6 +1,6 @@
 // Gibbet.jsx
 // Visual component for the gibbet creature
-import { COLORS } from "./colors";
+import { COLORS } from "../data/colors";
 import { useEffect, useRef, useState } from "react";
 
 export default function Gibbet({ x, y, angle, state, poisoned, poisonAge, gainPopups = [] }) {

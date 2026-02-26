@@ -1,28 +1,34 @@
 import { useEffect, useRef, useState } from "react";
-import { COLORS } from "./colors";
-import { makeNetwork, nnTrainStep } from "./nn";
+import { COLORS } from "../data/colors";
+import { makeNetwork, nnTrainStep } from "../engine/nn";
 import NetworkViz from "./NetworkViz";
-import { UPGRADES } from "./upgrades";
+import { UPGRADES } from "../data/upgrades";
 import {
   makeGS,
   gameTick,
   snapshot,
   applyAllUpgrades,
   TW, TH, GROUND_Y, GRASS, PEBBLES, DUST
-} from "./terrariumEngine";
-import { NETWORK_CONFIG_T2 } from "./networkConfig";
+} from "../engine/terrariumEngine";
+import { NETWORK_CONFIG_T2 } from "../data/networkConfig";
 import { TerrariumScene } from "./TerrariumScene";
 import TrainingButtons from "./TrainingButtons";
+import { useGibbets } from "../store/gibbetStore.jsx";
 
 export default function Terrarium2({
-  network,
+  slot = "t2",
   config = NETWORK_CONFIG_T2,
   onIndicatorChange,
   onResourceCounters,
   onTrainingPanel,
   onUpgradesSidebar,
-  onTrainCountChange // <-- add this prop
+  onTrainCountChange
 }) {
+  const { assignments, getNetwork, gibbets, updateGibbetMeta } = useGibbets();
+  const gibbetId = assignments[slot];
+  const gibbet = gibbets.find(g => g.id === gibbetId);
+  const network = getNetwork(gibbetId);
+
   const [upgradeLevels, setUpgradeLevels] = useState({});
   const gsRef = useRef(null);
   if (!gsRef.current) {
@@ -31,20 +37,20 @@ export default function Terrarium2({
   const [snap, setSnap] = useState(() => snapshot(gsRef.current));
 
   useEffect(() => {
-    const id = setInterval(() => {
+    let running = true;
+    function tick() {
+      if (!running) return;
       gameTick(gsRef.current, UPGRADES, config);
       setSnap(snapshot(gsRef.current));
-    }, 1000 / 30);
-    return () => clearInterval(id);
-  }, [config]);
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+    return () => { running = false; };
+  }, []); // Only run once on mount
 
   useEffect(() => {
     if (onIndicatorChange) onIndicatorChange(snap.indicator);
   }, [snap.indicator, onIndicatorChange]);
-
-  useEffect(() => {
-    if (onTrainCountChange) onTrainCountChange(snap.trainCount);
-  }, [snap.trainCount, onTrainCountChange]);
 
   useEffect(() => {
     if (onTrainingPanel) {

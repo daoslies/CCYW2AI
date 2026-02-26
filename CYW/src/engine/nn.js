@@ -127,7 +127,7 @@ export function nnForward(network, input) {
 }
 
 // Import network architecture config
-import { NETWORK_LAYERS } from "./networkConfig";
+import { NETWORK_LAYERS } from "../data/networkConfig";
 
 // 7. Network architecture
 // ML team: Output layer is now 3 neurons (for 3 classes), followed by softmax.

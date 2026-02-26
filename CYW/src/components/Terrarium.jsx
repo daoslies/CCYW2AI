@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { COLORS } from "./colors";
-import { makeNetwork, nnTrainStep } from "./nn";
+import { COLORS } from "../data/colors";
+import { makeNetwork, nnTrainStep } from "../engine/nn";
 import NetworkViz from "./NetworkViz";
-import { UPGRADES } from "./upgrades";
+import { UPGRADES } from "../data/upgrades";
 import { 
   makeGS, 
   gameTick, 
@@ -10,21 +10,28 @@ import {
   applyAllUpgrades, 
   TW, TH, GROUND_Y, GRASS, PEBBLES, DUST,
   getResourceRate
-} from "./terrariumEngine";
-import { NETWORK_CONFIG_T1 } from "./networkConfig";
+} from "../engine/terrariumEngine";
+import { NETWORK_CONFIG_T1 } from "../data/networkConfig";
 import { TerrariumScene } from "./TerrariumScene";
 import Resource from "./Resource";
 import TrainingButtons from "./TrainingButtons";
+import { useGibbets } from "../store/gibbetStore.jsx";
+import Gibbet from "./Gibbet.jsx";
 
-export default function Terrarium({ 
-  network, 
-  config = NETWORK_CONFIG_T1, 
-  onIndicatorChange, 
-  onResourceCounters, 
-  onTrainingPanel, 
-  onUpgradesSidebar, 
+export default function Terrarium({
+  slot = "t1",
+  config = NETWORK_CONFIG_T1,
+  onIndicatorChange,
+  onResourceCounters,
+  onTrainingPanel,
+  onUpgradesSidebar,
   onUpgradeLevelsChange // <-- new prop
 }) {
+  const { assignments, getNetwork, gibbets, updateGibbetMeta, selectedGibbetId, selectGibbet } = useGibbets();
+  const gibbetId = assignments[slot];
+  const gibbet = gibbets.find(g => g.id === gibbetId);
+  const network = gibbetId != null ? getNetwork(gibbetId) : null;
+
   // Upgrades state
   const [upgradeLevels, setUpgradeLevels] = useState({});
   // Game state lives in a ref
@@ -52,13 +59,18 @@ export default function Terrarium({
     }
   }, [snap.indicator, onIndicatorChange]);
 
+  // Only set up the interval once, and use refs for config/network
   useEffect(() => {
-    const id = setInterval(() => {
+    let running = true;
+    function tick() {
+      if (!running) return;
       gameTick(gsRef.current, UPGRADES, config);
       setSnap(snapshot(gsRef.current));
-    }, 1000 / 30);
-    return () => clearInterval(id);
-  }, [config]);
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+    return () => { running = false; };
+  }, []); // Only run once on mount
 
   function handleReset() {
     gsRef.current = makeGS(network, upgradeLevels, UPGRADES, config);
@@ -273,27 +285,41 @@ export default function Terrarium({
   }
 
   return (
-    <div style={{
-      width: "100%",
-      maxWidth: 540,
-      borderRadius: 20,
-      border: "2px solid rgba(140,200,255,0.13)",
-      boxShadow: [
-        "0 0 0 1px rgba(100,150,255,0.06)",
-        "inset 0 0 30px rgba(0,20,60,0.4)",
-        "inset 0 -10px 28px rgba(0,0,0,0.55)",
-        "inset 2px 0 12px rgba(0,0,0,0.3)",
-        "inset -2px 0 12px rgba(0,0,0,0.3)",
-        "0 28px 80px rgba(0,0,0,0.75)"
-      ].join(", "),
-      overflow: "hidden",
-      background: "#0a0c16", // slightly lighter than #09090f
-      position: "relative",
-      marginTop: 32,
-      marginLeft: "auto",
-      marginRight: "auto"
-    }}>
-      <TerrariumScene snap={snap} />
+    <div
+      style={{
+        width: "100%",
+        maxWidth: 540,
+        borderRadius: 20,
+        border: selectedGibbetId === gibbetId ? "3px solid #7dd3fc" : "2px solid rgba(140,200,255,0.13)",
+        boxShadow: [
+          selectedGibbetId === gibbetId ? "0 0 0 4px #7dd3fc44" : "0 0 0 1px rgba(100,150,255,0.06)",
+          "inset 0 0 30px rgba(0,20,60,0.4)",
+          "inset 0 -10px 28px rgba(0,0,0,0.55)",
+          "inset 2px 0 12px rgba(0,0,0,0.3)",
+          "inset -2px 0 12px rgba(0,0,0,0.3)",
+          "0 28px 80px rgba(0,0,0,0.75)"
+        ].join(", "),
+        overflow: "hidden",
+        background: "#0a0c16",
+        position: "relative",
+        marginTop: 32,
+        marginLeft: "auto",
+        marginRight: "auto",
+        cursor: "default",
+        transition: "border 0.18s, box-shadow 0.18s"
+      }}
+    >
+      {/* Render the gibbet as a clickable entity inside the terrarium */}
+      {gibbet ? (
+        <div style={{ position: "absolute", left: "50%", top: "80%", transform: "translate(-50%, -50%)", zIndex: 2 }}>
+          <Gibbet
+            gibbet={gibbet}
+            selected={selectedGibbetId === gibbet.id}
+            onClick={() => selectGibbet(gibbet.id)}
+          />
+        </div>
+      ) : null}
+      {network && <TerrariumScene snap={snap} />}
       {/* Glass edge radial vignette overlay */}
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", borderRadius: 20, background: "radial-gradient(ellipse at 28% 12%, rgba(255,255,255,0.018) 0%, transparent 55%)" }} />
     </div>

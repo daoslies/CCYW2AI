@@ -1,6 +1,6 @@
 // terrariumEngine.js
 // Pure, parameterised game logic engine for all terrarium variants
-import { COLORS } from "./colors";
+import { COLORS } from "../data/colors";
 import { nnForward, nnTrainStep } from "./nn";
 
 export const TW = 480, TH = 270;
