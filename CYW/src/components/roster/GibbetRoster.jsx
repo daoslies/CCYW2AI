@@ -1,14 +1,16 @@
 import React, { useState } from "react";
-import { useWorld } from "../store/worldStore.jsx";
+import { useWorld } from '../../store/worldStore.jsx';
 import { RosterSection, RosterItem, ActionButton } from "./RosterSection.jsx";
-import { R } from "../styles/rosterTokens.js";
-import Gibbet from "./Gibbet.jsx";
-import DraggableItem from "./DraggableItem.jsx";
+import { R } from "../../styles/rosterTokens.js";
+import GibbetVisual from "../gibbet/GibbetVisual.jsx";
+import DraggableItem from "../dragdrop/DraggableItem.jsx";
+import { COLORS } from "../../data/colors.js";
+import Gibbet from "../gibbet/Gibbet.jsx";
 
 const SLOT_LABELS = { t1: "T1", t2: "T2" };
 
 export default function GibbetRoster() {
-  const { gibbets, brains, bodies, assignments, assignGibbet, unassignGibbet, dissolveGibbet } = useWorld();
+  const { gibbets, brains, bodies, assignments, assignGibbet, unassignGibbet, dissolveGibbet, simStates } = useWorld();
   const [confirmingDissolve, setConfirmingDissolve] = useState(null);
 
   function getSlotsForGibbet(gibbetId) {
@@ -28,20 +30,21 @@ export default function GibbetRoster() {
         const assignedSlots = getSlotsForGibbet(gibbet.id);
         const brain = brains.find(b => b.id === gibbet.brainId);
         const body  = bodies.find(b => b.id === gibbet.bodyId);
+        const simState = simStates[gibbet.id] || { state: gibbet.state || "idle", poisonedUntil: gibbet.poisoned ? Date.now() + 10000 : 0, now: Date.now() };
         const isConfirming = confirmingDissolve === gibbet.id;
         const isAssigned = assignedSlots.length > 0;
         return (
           <div key={gibbet.id} className="roster-item">
             <DraggableItem
-              item={gibbet}
+              payload={gibbet}
               type="gibbet"
               id={gibbet.id}
               disabled={false}
               className="draggable-icon"
               style={{ display: "inline-block", marginRight: 12 }}
             >
-              <svg width={32} height={32} style={{ verticalAlign: "middle" }}>
-                <Gibbet x={16} y={16} angle={0} state={gibbet.state || "idle"} poisoned={gibbet.poisoned} gainPopups={[]} color={gibbet.color} />
+              <svg width={40} height={44} viewBox="0 0 40 44" style={{ verticalAlign: "middle" }}>
+                <Gibbet x={20} y={22} angle={0} state={simState.state} poisoned={!!(simState.poisonedUntil && simState.now < simState.poisonedUntil)} gainPopups={[]} color={body?.color || gibbet.color} />
               </svg>
             </DraggableItem>
             <RosterItem key={gibbet.id}>

@@ -1,4 +1,5 @@
-import { COLORS } from "../data/colors";
+import { COLORS } from "../../data/colors.js";
+import { useWorld } from "../../store/worldStore.jsx";
 
 export default function Resource({ r, now, harvestProgress = 0, claimedBy, isCorrect }) {
   const col = COLORS.find(c => c.id === r.colorId);

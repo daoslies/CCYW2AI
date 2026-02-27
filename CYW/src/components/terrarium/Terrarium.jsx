@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { COLORS } from "../data/colors";
-import { makeNetwork, nnTrainStep } from "../engine/nn";
-import NetworkViz from "./NetworkViz";
-import { UPGRADES } from "../data/upgrades";
+import { COLORS } from "../../data/colors.js";
+import { makeNetwork, nnTrainStep } from "../../engine/nn";
+import NetworkViz from "../shared/NetworkViz.jsx";
+import { UPGRADES } from "../../data/upgrades.js";
 import { 
   makeGS, 
   gameTick, 
@@ -10,14 +10,16 @@ import {
   applyAllUpgrades, 
   TW, TH, GROUND_Y, GRASS, PEBBLES, DUST,
   getResourceRate
-} from "../engine/terrariumEngine";
-import { NETWORK_CONFIG_T1 } from "../data/networkConfig";
+} from "../../engine/terrariumEngine";
+import { NETWORK_CONFIG_T1 } from "../../data/networkConfig.js";
 import { TerrariumScene } from "./TerrariumScene";
 import Resource from "./Resource";
-import TrainingButtons from "./TrainingButtons";
-import { useWorld } from "../store/worldStore.jsx";
-import Gibbet from "./Gibbet.jsx";
-import DropZone from "./DropZone.jsx";
+import TrainingButtons from "../shared/TrainingButtons.jsx";
+import { useWorld } from "../../store/worldStore.jsx";
+import { useDrag } from "../../store/dragStore.jsx";
+import Gibbet from "../gibbet/Gibbet.jsx";
+import DropZone from "../dragdrop/DropZone.jsx";
+import DraggableItem from "../dragdrop/DraggableItem.jsx";
 
 export default function Terrarium({
   slot = "t1",
@@ -30,7 +32,7 @@ export default function Terrarium({
   parentUpgradeLevels
 }) {
   // UseWorld instead of useGibbets
-  const { assignments, gibbets, brains, getNetwork, updateGibbetMeta, activeTrainerId } = useWorld();
+  const { assignments, gibbets, brains, getNetwork, updateGibbetMeta, activeTrainerId, assignGibbet, unassignGibbet, simStates, updateSimState } = useWorld();
   // Defensive: assignments, gibbets, brains may be empty
   const gibbetIds = assignments?.[slot] || [];
   const gibbetEntries = gibbetIds
@@ -80,6 +82,11 @@ export default function Terrarium({
       // Pass correct network instance for each gibbet
       gameTick(gsRef.current, gibbetEntries.map(e => ({ id: e.id, network: e.network })), UPGRADES, config);
       setSnap(snapshot(gsRef.current));
+      // After snapshot, update simStates in world store
+      const snapNow = snapshot(gsRef.current);
+      snapNow.gibbets?.forEach(gs => {
+        updateSimState(gs.id, { state: gs.state, poisonedUntil: gs.poisonedUntil, now: snapNow.now });
+      });
       requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
@@ -318,6 +325,11 @@ export default function Terrarium({
   // Defensive: always render container, even if no gibbets assigned
   const hasGibbets = gibbetEntries.length > 0;
 
+  // Use drag state to highlight dropzone when dragging a gibbet
+  const { dragging } = useDrag();
+  const isGibbetDragging = dragging && dragging.type === "gibbet";
+  const draggingGibbetIds = isGibbetDragging ? [dragging.id] : [];
+
   return (
     <div
       style={{
@@ -343,39 +355,96 @@ export default function Terrarium({
         transition: "border 0.18s, box-shadow 0.18s"
       }}
     >
-      {/* Render all assigned gibbets as clickable entities inside the terrarium */}
-      {hasGibbets ? gibbetEntries.map(({ id }) => {
+      {/* Simulation layer — always renders, pointer events off */}
+      {hasGibbets && (
+        <TerrariumScene snap={snap} draggingIds={draggingGibbetIds} style={{ pointerEvents: "none" }} />
+      )}
+
+      {/* Transparent draggable hit areas — positioned over simulation gibbets */}
+      {hasGibbets && gibbetEntries.map(({ id }) => {
         const gibbet = gibbets.find(g => g.id === id);
-        return gibbet ? (
-          <div key={id} style={{ position: "absolute", left: "50%", top: "80%", transform: "translate(-50%, -50%)", zIndex: 2 }}>
-            <Gibbet
-              gibbet={gibbet}
-              selected={selectedGibbetId === gibbet.id}
-              onClick={() => selectGibbet(gibbet.id)}
-            />
+        const gibbetSnap = snap.gibbets?.find(gs => gs.id === id);
+        if (!gibbet || !gibbetSnap) return null;
+        // Convert simulation coordinates to percentage positions within SVG viewport
+        const leftPct = (gibbetSnap.x / 480) * 100;
+        const topPct = (gibbetSnap.y / 270) * 100;
+        const isDraggingThis = draggingGibbetIds.includes(id);
+        return (
+          <div
+            key={id}
+            style={{
+              position: "absolute",
+              left: `${leftPct}%`,
+              top: `${topPct}%`,
+              transform: "translate(-50%, -50%)",
+              width: 44,
+              height: 44,
+              zIndex: 10,
+              background: "transparent",
+              opacity: isDraggingThis ? 0 : 1,
+              pointerEvents: isDraggingThis ? "none" : "auto"
+            }}
+          >
+            <DraggableItem type="gibbet" id={id} payload={{ ...gibbet }}>
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  cursor: "grab",
+                  borderRadius: "50%",
+                  transition: "box-shadow 0.15s"
+                }}
+                onMouseEnter={e => e.currentTarget.style.boxShadow = "0 0 0 2px rgba(125,211,252,0.3)"}
+                onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}
+              />
+            </DraggableItem>
           </div>
-        ) : null;
-      }) : (
+        );
+      })}
+
+      {/* No gibbets assigned message */}
+      {!hasGibbets && (
         <div style={{ width: "100%", height: 180, display: "flex", alignItems: "center", justifyContent: "center", color: "#38bdf8", fontSize: 16, opacity: 0.7 }}>
           No gibbets assigned
         </div>
       )}
-      {hasGibbets && <TerrariumScene snap={snap} />}
-      {/* Terrarium gibbet assignment drop zones */}
-      {gibbets.map((gibbet) => (
-        <DropZone
-          key={gibbet.id}
-          type="gibbet"
-          id={gibbet.id}
-          onDrop={(item) => worldActions.assignGibbetToTerrarium(item.id, gibbet.id)}
-          className="terrarium-dropzone"
-          disabled={/* defensive: e.g. gibbet is already assigned */ false}
-        >
-          {/* Render gibbet UI here */}
-          {/* ...existing code for gibbet rendering... */}
-        </DropZone>
-      ))}
-      {/* Render bodies roster below gibbets roster */}
+
+      <DropZone
+        accepts={["gibbet"]}
+        onDrop={item => {
+          if (!gibbetIds.includes(item.id)) {
+            assignGibbet(slot, item.id);
+          }
+        }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 3,
+          pointerEvents: isGibbetDragging ? "auto" : "none",
+          border: isGibbetDragging ? "3px solid #4ade80" : "3px solid transparent",
+          background: isGibbetDragging ? "rgba(74,222,128,0.10)" : "none",
+          borderRadius: 20,
+          boxSizing: "border-box",
+          transition: "border 0.12s, background 0.12s",
+        }}
+      />
+      {/* Add a global DropZone for unassignment */}
+      <DropZone
+        accepts={["gibbet"]}
+        onDrop={item => {
+          // If gibbet is assigned to this terrarium, unassign it
+          if (gibbetIds.includes(item.id)) {
+            unassignGibbet(slot, item.id);
+          }
+        }}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1,
+          pointerEvents: isGibbetDragging ? "auto" : "none",
+          background: "rgba(0,0,0,0.01)", // invisible but active
+        }}
+      />
       {/* Glass edge radial vignette overlay */}
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", borderRadius: 20, background: "radial-gradient(ellipse at 28% 12%, rgba(255,255,255,0.018) 0%, transparent 55%)" }} />
     </div>

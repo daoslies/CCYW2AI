@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
-import { useDrag } from "../store/dragStore";
+import { useDrag } from "../../store/dragStore.jsx";
 
-export default function DropZone({ accepts, onDrop, children, style }) {
+export default function DropZone({ accepts = [], onDrop, children, style, activeStyle }) {
   const { dragging, endDrag } = useDrag();
   const [isOver, setIsOver] = useState(false);
   const ref = useRef();
@@ -22,12 +22,13 @@ export default function DropZone({ accepts, onDrop, children, style }) {
       }}
       style={{
         ...style,
-        outline: isOver && canAccept
+        ...(isOver && canAccept && activeStyle ? activeStyle : {}),
+        outline: isOver && canAccept && !activeStyle
           ? "2px solid #4ade80"
-          : "2px solid transparent",
-        background: isOver && canAccept
+          : style?.outline || "2px solid transparent",
+        background: isOver && canAccept && !activeStyle
           ? "rgba(74,222,128,0.06)"
-          : undefined,
+          : style?.background,
         borderRadius: 12,
         transition: "outline 0.1s, background 0.1s",
       }}

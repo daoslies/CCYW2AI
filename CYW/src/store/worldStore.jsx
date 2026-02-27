@@ -125,6 +125,12 @@ export function WorldProvider({ children }) {
   // Trainer
   const [activeTrainerId, setActiveTrainerId] = useState(brains[0]?.id ?? null);
 
+  // Simulation state for gibbets (for roster animation)
+  const [simStates, setSimStates] = useState({});
+  const updateSimState = useCallback((gibbetId, stateSlice) => {
+    setSimStates(prev => ({ ...prev, [gibbetId]: stateSlice }));
+  }, []);
+
   return (
     <WorldContext.Provider value={{
       brains, addBrain, getNetwork, updateBrainMeta, usedBrainIds,
@@ -132,6 +138,7 @@ export function WorldProvider({ children }) {
       gibbets, combineGibbet, dissolveGibbet,
       assignments, assignGibbet, unassignGibbet,
       activeTrainerId, setActiveTrainerId,
+      simStates, updateSimState,
     }}>
       {children}
     </WorldContext.Provider>

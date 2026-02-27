@@ -1,10 +1,12 @@
 import React from "react";
-import { useWorld } from "../store/worldStore.jsx";
+import { useWorld } from "../../store/worldStore.jsx";
 import { RosterSection, RosterItem, StatusPip, ActionButton } from "./RosterSection.jsx";
-import { R } from "../styles/rosterTokens.js";
-import { NETWORK_CONFIG_T1 } from "../data/networkConfig.js";
+import { R } from "../../styles/rosterTokens.js";
+import { NETWORK_CONFIG_T1 } from "../../data/networkConfig.js";
+import { COLORS } from "../../data/colors.js";
 import AccuracyRing from "./AccuracyRing.jsx";
-import DraggableItem from "./DraggableItem.jsx";
+import DraggableItem from "../dragdrop/DraggableItem.jsx";
+import Gibbet from "../gibbet/Gibbet.jsx";
 
 function brainAccuracy(brain) {
   // Dummy: returns 0-1 based on trainCount (replace with real logic)
@@ -12,7 +14,7 @@ function brainAccuracy(brain) {
   return Math.min(1, brain.trainCount / 30);
 }
 
-export default function BrainsRoster() {
+export default function BrainsRoster({ onDragStart }) {
   const { brains, addBrain, usedBrainIds, activeTrainerId, setActiveTrainerId } = useWorld();
 
   return (
@@ -42,7 +44,12 @@ export default function BrainsRoster() {
           <div key={brain.id} className="roster-item">
             {/* Brain icon only is draggable */}
             <div style={{ width: 32, height: 32, display: "inline-block", verticalAlign: "middle", position: "relative" }}>
-              <DraggableItem type="brain" id={brain.id} payload={brain}>
+              <DraggableItem
+                type="brain"
+                id={brain.id}
+                payload={brain}
+                onDragStart={onDragStart}
+              >
                 <span role="img" aria-label="brain" style={{ fontSize: 28, margin: 0, padding: 0, display: "block" }}>
                   🧠
                 </span>

@@ -1,4 +1,5 @@
 import React from "react";
+import { useWorld } from "../../store/worldStore.jsx";
 
 export default function CenterPanel({
   view,

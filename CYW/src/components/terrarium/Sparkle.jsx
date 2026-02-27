@@ -1,3 +1,5 @@
+import { useWorld } from "../../store/worldStore.jsx";
+
 export default function Sparkle({ s, now }) {
   const age  = (now - s.born) / 600;
   const dist = age * 28;

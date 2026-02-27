@@ -1,11 +1,12 @@
 import React from "react";
-import { useWorld } from "../store/worldStore.jsx";
+import { useWorld } from "../../store/worldStore.jsx";
 import { RosterSection, RosterItem, StatusPip, ActionButton } from "./RosterSection.jsx";
-import { R } from "../styles/rosterTokens.js";
-import Gibbet from "./Gibbet.jsx";
-import DraggableItem from "./DraggableItem.jsx";
+import { R } from "../../styles/rosterTokens.js";
+import Gibbet from "../gibbet/Gibbet.jsx";
+import DraggableItem from "../dragdrop/DraggableItem.jsx";
+import { COLORS } from "../../data/colors.js";
 
-export default function BodiesRoster() {
+export default function BodiesRoster({ onDragStart }) {
   const { bodies, addBody, usedBodyIds } = useWorld();
 
   return (
@@ -32,7 +33,12 @@ export default function BodiesRoster() {
         return (
           <div key={body.id} className="roster-item">
             <div style={{ width: 32, height: 32, display: "inline-block", verticalAlign: "middle", position: "relative" }}>
-              <DraggableItem type="body" id={body.id} payload={body}>
+              <DraggableItem
+                type="body"
+                id={body.id}
+                payload={body}
+                onDragStart={onDragStart}
+              >
                 <svg width={32} height={32} style={{ display: "block", margin: 0, padding: 0 }}>
                   <Gibbet x={16} y={16} angle={0} state={"body"} poisoned={false} gainPopups={[]} showEyes={false} color={body.color} />
                 </svg>

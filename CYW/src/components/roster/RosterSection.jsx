@@ -1,5 +1,6 @@
 import React from "react";
-import { R } from "../styles/rosterTokens";
+import { R } from "../../styles/rosterTokens.js";
+import { COLORS } from "../../data/colors.js";
 
 export function RosterSection({ title, accent, children, action }) {
   return (
@@ -33,6 +34,8 @@ export function RosterSection({ title, accent, children, action }) {
     </div>
   );
 }
+
+export default RosterSection;
 
 export function StatusPip({ used, usedLabel, freeLabel }) {
   return (

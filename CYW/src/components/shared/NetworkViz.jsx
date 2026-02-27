@@ -1,6 +1,7 @@
 import { useMemo, useEffect, useState, useRef } from "react";
-import { COLORS } from "../data/colors";
-import { NETWORK_LAYERS } from "../data/networkConfig";
+import { COLORS } from "../../data/colors.js";
+import { NETWORK_LAYERS } from "../../data/networkConfig.js";
+import { useWorld } from "../../store/worldStore.jsx";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NetworkViz — live visualisation of the composed network

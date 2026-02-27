@@ -1,107 +1,23 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { makeNetwork, nnTrainStep, nnForward } from "../engine/nn";
-import { COLORS, decodeOutput } from "../data/colors";
-import NetworkViz from "./NetworkViz";
-import Terrarium from "./Terrarium";
-import { UPGRADES } from "../data/upgrades";
-import { QUOTES } from "../data/quotes";
-import { useWorld } from "../store/worldStore.jsx";
-import GibbetRoster from "./GibbetRoster.jsx";
-import Gibbet from "./Gibbet.jsx";
-import { NETWORK_CONFIG_T1, NETWORK_CONFIG_T2 } from "../data/networkConfig.js";
-import BrainsRoster from "./BrainsRoster.jsx";
-import BodiesRoster from "./BodiesRoster";
-import DropZone from "./DropZone.jsx";
-import DragLayer from "./DragLayer.jsx";
-import { DragProvider } from "../store/dragStore.jsx";
-
-// CombinePanel: always visible for testing
-function CombinePanel({
-  draggingBrain,
-  draggingBody,
-  combineBrain,
-  combineBody,
-  onDropBrain,
-  onDropBody,
-  onCombine,
-  onCancel,
-  isActive
-}) {
-  // Visual feedback: highlight slot if dragging
-  const brainSlotGlow = draggingBrain ? "0 0 16px #7dd3fc, 0 0 32px #7dd3fc80" : "none";
-  const bodySlotGlow = draggingBody ? "0 0 16px #4ade80, 0 0 32px #4ade8080" : "none";
-
-  return (
-    <div style={{
-      position: "fixed",
-      right: 340,
-      top: 0,
-      width: 340,
-      height: "100vh",
-      background: "#181a22",
-      boxShadow: "-4px 0 24px #0006",
-      borderLeft: "1px solid #1a1e2a",
-      zIndex: 30,
-      transition: "right 0.32s cubic-bezier(.7,.2,.2,1)",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      pointerEvents: "auto"
-    }}>
-      <div style={{ width: "100%", maxWidth: 320, background: "#09090f", border: "1px solid #111120", borderRadius: 16, padding: "24px 18px 18px", margin: "0 auto", display: "flex", flexDirection: "column", gap: 18 }}>
-        <div style={{ color: "#7dd3fc", fontWeight: 600, fontSize: 18, marginBottom: 8 }}>Combine Panel</div>
-        <div style={{ color: "#f87171", fontSize: 12, marginBottom: 8 }}>
-          Debug: draggingBrain={draggingBrain ? draggingBrain.name : "null"}, draggingBody={draggingBody ? draggingBody.name : "null"}, combineBrain={combineBrain ? combineBrain.name : "null"}, combineBody={combineBody ? combineBody.name : "null"}
-        </div>
-        <DropZone
-          accepts={["brain"]}
-          type="brain"
-          id="combine-brain-slot"
-          onDrop={onDropBrain}
-          className="combine-dropzone brain-slot"
-          tooltip="Drop a brain here to combine"
-          isCompatible={!!draggingBrain}
-          style={{ boxShadow: brainSlotGlow, border: draggingBrain ? "2px solid #7dd3fc" : "1px solid #222" }}
-        >
-          {combineBrain ? (
-            <div style={{ color: "#b6e3ff", fontWeight: 500, fontSize: 15, marginBottom: 8 }}>Brain: {combineBrain.name || `Brain #${combineBrain.id}`}</div>
-          ) : (
-            <div style={{ color: draggingBrain ? "#7dd3fc" : "#aaa", fontWeight: 500, fontSize: 15, marginBottom: 8 }}>
-              {draggingBrain ? "Drop to assign" : "No brain assigned"}
-            </div>
-          )}
-        </DropZone>
-        <DropZone
-          accepts={["body"]}
-          type="body"
-          id="combine-body-slot"
-          onDrop={onDropBody}
-          className="combine-dropzone body-slot"
-          tooltip="Drop a body here to combine"
-          isCompatible={!!draggingBody}
-          style={{ boxShadow: bodySlotGlow, border: draggingBody ? "2px solid #4ade80" : "1px solid #222" }}
-        >
-          {combineBody ? (
-            <div style={{ color: "#b6e3ff", fontWeight: 500, fontSize: 15, marginBottom: 8 }}>Body: {combineBody.name || `Body #${combineBody.id}`}</div>
-          ) : (
-            <div style={{ color: draggingBody ? "#4ade80" : "#aaa", fontWeight: 500, fontSize: 15, marginBottom: 8 }}>
-              {draggingBody ? "Drop to assign" : "No body assigned"}
-            </div>
-          )}
-        </DropZone>
-        <button
-          style={{ background: "#222", color: "#7dd3fc", border: "none", borderRadius: 8, padding: "10px 18px", fontSize: 16, fontWeight: 600, cursor: "pointer", marginTop: 18, opacity: combineBrain && combineBody ? 1 : 0.5 }}
-          disabled={!combineBrain || !combineBody}
-          onClick={() => combineBrain && combineBody && onCombine(combineBrain, combineBody)}
-        >
-          Combine to Create Gibbet
-        </button>
-        <button style={{ marginTop: 12, background: "#222", color: "#aaa", border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 14, cursor: "pointer" }} onClick={onCancel}>Cancel</button>
-      </div>
-    </div>
-  );
-}
+import { makeNetwork, nnTrainStep, nnForward } from "../../engine/nn";
+import { COLORS, decodeOutput } from "../../data/colors.js";
+import NetworkViz from "../shared/NetworkViz.jsx";
+import TrainingButtons from "../shared/TrainingButtons.jsx";
+import Terrarium from "../terrarium/Terrarium.jsx";
+import { UPGRADES } from "../../data/upgrades.js";
+import { QUOTES } from "../../data/quotes.js";
+import { useWorld } from "../../store/worldStore.jsx";
+import { NETWORK_CONFIG_T1, NETWORK_CONFIG_T2 } from "../../data/networkConfig.js";
+import DropZone from "../dragdrop/DropZone.jsx";
+import DragLayer from "../dragdrop/DragLayer.jsx";
+import { DragProvider } from "../../store/dragStore.jsx";
+import BrainsRoster from "../roster/BrainsRoster.jsx";
+import BodiesRoster from "../roster/BodiesRoster.jsx";
+import GibbetRoster from "../roster/GibbetRoster.jsx";
+import RosterSection from "../roster/RosterSection.jsx";
+import AccuracyRing from "../roster/AccuracyRing.jsx";
+import Gibbet from "../gibbet/Gibbet.jsx";
+import { CombinePanel } from "./RightPanel.jsx";
 
 function safeNum(val, fallback = 0) {
   return typeof val === "number" && isFinite(val) ? val : fallback;
@@ -247,14 +163,6 @@ export default function App() {
   const [combineBrain, setCombineBrain] = useState(null);
   const [combineBody, setCombineBody] = useState(null);
 
-  // Handler for drag start (from roster)
-  const handleBrainDragStart = (brain) => {
-    setDraggingBrain(brain);
-  };
-  const handleBodyDragStart = (body) => {
-    setDraggingBody(body);
-  };
-
   // Handler for drop into combine panel slots
   const handleDropBrain = (item) => {
     setCombineBrain(item);
@@ -283,6 +191,17 @@ export default function App() {
     setDraggingBody(null);
     setCombinePanelLocked(false);
   };
+
+  // Always clear dragging state on pointerup (drag end)
+  useEffect(() => {
+    function handlePointerUp() {
+      // Always clear dragging state on pointer up
+      setDraggingBrain(null);
+      setDraggingBody(null);
+    }
+    window.addEventListener('pointerup', handlePointerUp);
+    return () => window.removeEventListener('pointerup', handlePointerUp);
+  }, [draggingBrain, draggingBody, combineBrain, combineBody]);
 
   // Add a dummy state to force re-render after training
   const [networkUpdateTick, setNetworkUpdateTick] = useState(0);
@@ -926,6 +845,11 @@ export default function App() {
           </div>
         </div>
 
+        {/* DEBUG: Show drag state */}
+        <div style={{position: 'fixed', right: 320, top: 10, zIndex: 9999, background: '#222', color: '#fff', padding: 8, borderRadius: 6, fontSize: 13, opacity: 0.85}}>
+          <div>draggingBrain: {draggingBrain ? (draggingBrain.name || draggingBrain.id || '[object]') : 'null'}</div>
+          <div>draggingBody: {draggingBody ? (draggingBody.name || draggingBody.id || '[object]') : 'null'}</div>
+        </div>
         {/* CombinePanel outside sidebar, fixed right */}
         <CombinePanel
           draggingBrain={draggingBrain}
@@ -936,7 +860,7 @@ export default function App() {
           onDropBody={handleDropBody}
           onCombine={handleCombine}
           onCancel={handleCombineCancel}
-          isActive={!!draggingBrain || !!draggingBody || combinePanelLocked}
+          isActive={!!draggingBrain || !!draggingBody || !!combineBrain || !!combineBody}
         />
         {/* DragLayer overlays everything, renders the in-hand item */}
         <DragLayer renderItem={({ type, payload }) => {
@@ -956,6 +880,32 @@ export default function App() {
           );
           return null;
         }} />
+        {/* Add a global DropZone for gibbet unassignment */}
+        <DropZone
+          accepts={["gibbet"]}
+          onDrop={item => {
+            // Find which slot (terrarium) this gibbet is assigned to
+            const slot = Object.keys(assignments).find(slotId => (assignments[slotId] || []).includes(item.id));
+            if (slot) {
+              unassignGibbet(slot, item.id);
+            }
+          }}
+          style={{
+            position: "fixed",
+            left: 0,
+            top: 0,
+            width: "100vw",
+            height: "100vh",
+            zIndex: 1, // below drag layer and panels
+            pointerEvents: "none", // only activate when dragging
+          }}
+          activeStyle={{
+            pointerEvents: "auto",
+            border: "2px dashed #f87171",
+            background: "rgba(248,113,113,0.08)",
+            zIndex: 1000,
+          }}
+        />
       </div>
     </DragProvider>
   );

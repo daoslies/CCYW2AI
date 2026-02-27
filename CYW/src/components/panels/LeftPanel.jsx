@@ -1,6 +1,7 @@
 import React from "react";
 import GibbetBioPanel from "./App.jsx"; // If GibbetBioPanel is a subcomponent, import from App.jsx
-import NetworkViz from "./NetworkViz";
+import NetworkViz from "../shared/NetworkViz.jsx";
+import { useWorld } from "../../store/worldStore.jsx";
 
 export default function LeftPanel({
   trainerBrain,

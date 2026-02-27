@@ -1,12 +1,17 @@
-import { COLORS } from "../data/colors";
-import { TW, TH, GROUND_Y, GRASS, PEBBLES, DUST, isCorrectCollection } from "../engine/terrariumEngine";
+import { COLORS } from "../../data/colors.js";
+import { TW, TH, GROUND_Y, GRASS, PEBBLES, DUST, isCorrectCollection } from "../../engine/terrariumEngine";
 import { useRef, useEffect, useState } from "react";
-import Gibbet from "./Gibbet";
+import { useWorld } from "../../store/worldStore.jsx";
+import Gibbet from "../gibbet/Gibbet.jsx";
 import Resource from "./Resource";
 import Sparkle from "./Sparkle";
+import DraggableItem from "../dragdrop/DraggableItem.jsx";
 
-export function TerrariumScene({ snap }) {
+// NOTE: Attempted to wrap each gibbet in <DraggableItem as="g"> for SVG drag logic, but this broke terrarium rendering and assignment. Reverting to previous version for further debugging.
+
+export function TerrariumScene({ snap, draggingIds = [], renderGibbet, ...rest }) {
   const { now, gibbets, resources, sparkles, indicator, config, weather } = snap;
+  const { gibbets: rosterGibbets, bodies } = useWorld();
 
   // Floating resource gain popups per gibbet
   const [gainPopupsMap, setGainPopupsMap] = useState({});
@@ -49,7 +54,7 @@ export function TerrariumScene({ snap }) {
   }, [now]);
 
   return (
-    <svg viewBox={`0 0 ${TW} ${TH}`} width="100%" style={{ display: "block" }}>
+    <svg viewBox={`0 0 ${TW} ${TH}`} width="100%" style={{ display: "block" }} {...rest}>
       <defs>
         <linearGradient id="gSky" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%"   stopColor="#060812" />
@@ -136,18 +141,25 @@ export function TerrariumScene({ snap }) {
         />
       ))}
       {sparkles.map(s => <Sparkle key={s.id} s={s} now={now} />)}
-      {gibbets && gibbets.map(g => (
-        <Gibbet
-          key={g.id}
-          x={g.x}
-          y={g.y}
-          angle={g.angle}
-          state={g.state}
-          poisoned={g.poisonedUntil && now < g.poisonedUntil}
-          poisonAge={g.poisonedUntil ? Math.max(0, 1 - (now - (g.poisonedUntil - 700)) / 700) : 0}
-          gainPopups={gainPopupsMap[g.id] || []}
-        />
-      ))}
+      {gibbets && gibbets.map(g => {
+        if (draggingIds.includes(g.id)) return null; // Hide gibbet while dragging
+        // Find roster gibbet and body for color
+        const rosterGibbet = rosterGibbets.find(rg => rg.id === g.id);
+        const body = rosterGibbet ? bodies.find(b => b.id === rosterGibbet.bodyId) : null;
+        return (
+          <Gibbet
+            key={g.id}
+            x={g.x}
+            y={g.y}
+            angle={g.angle}
+            state={g.state}
+            poisoned={g.poisonedUntil && now < g.poisonedUntil}
+            poisonAge={g.poisonedUntil ? Math.max(0, 1 - (now - (g.poisonedUntil - 700)) / 700) : 0}
+            gainPopups={gainPopupsMap[g.id] || []}
+            color={body?.color || rosterGibbet?.color || "#7dd3fc"}
+          />
+        );
+      })}
       <rect x={0} y={0} width={TW} height={TH} fill="url(#gVignette)" />
       <path d={`M 55 9 Q ${TW * 0.42} 3 ${TW - 65} 10`}
         stroke="rgba(200,230,255,0.045)" strokeWidth={1.8} fill="none" />

@@ -1,4 +1,8 @@
 import React from "react";
+import Gibbet from "../gibbet/Gibbet.jsx";
+import { useWorld } from "../../store/worldStore.jsx";
+import { R } from "../../styles/rosterTokens.js";
+import { COLORS } from "../../data/colors.js";
 
 export default function AccuracyRing({ value, color, size = 28 }) {
   const r = (size - 4) / 2;

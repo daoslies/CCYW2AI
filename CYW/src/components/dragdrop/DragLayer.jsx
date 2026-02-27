@@ -1,5 +1,5 @@
-import { useDrag } from "../store/dragStore";
-import Gibbet from "./Gibbet.jsx";
+import { useDrag } from "../../store/dragStore.jsx";
+import Gibbet from "../gibbet/Gibbet.jsx";
 import { createPortal } from "react-dom";
 
 export default function DragLayer({ renderItem }) {
