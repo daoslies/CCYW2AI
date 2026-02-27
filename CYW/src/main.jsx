@@ -3,11 +3,14 @@ import { createRoot } from 'react-dom/client'
 import './styles/index.css'
 import App from './components/App.jsx'
 import { WorldProvider } from './store/worldStore.jsx'
+import { DragProvider } from './store/dragStore.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <WorldProvider>
-      <App />
-    </WorldProvider>
+    <DragProvider>
+      <WorldProvider>
+        <App />
+      </WorldProvider>
+    </DragProvider>
   </StrictMode>,
 )

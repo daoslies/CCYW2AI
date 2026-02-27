@@ -17,6 +17,7 @@ import Resource from "./Resource";
 import TrainingButtons from "./TrainingButtons";
 import { useWorld } from "../store/worldStore.jsx";
 import Gibbet from "./Gibbet.jsx";
+import DropZone from "./DropZone.jsx";
 
 export default function Terrarium({
   slot = "t1",
@@ -360,6 +361,20 @@ export default function Terrarium({
         </div>
       )}
       {hasGibbets && <TerrariumScene snap={snap} />}
+      {/* Terrarium gibbet assignment drop zones */}
+      {gibbets.map((gibbet) => (
+        <DropZone
+          key={gibbet.id}
+          type="gibbet"
+          id={gibbet.id}
+          onDrop={(item) => worldActions.assignGibbetToTerrarium(item.id, gibbet.id)}
+          className="terrarium-dropzone"
+          disabled={/* defensive: e.g. gibbet is already assigned */ false}
+        >
+          {/* Render gibbet UI here */}
+          {/* ...existing code for gibbet rendering... */}
+        </DropZone>
+      ))}
       {/* Render bodies roster below gibbets roster */}
       {/* Glass edge radial vignette overlay */}
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", borderRadius: 20, background: "radial-gradient(ellipse at 28% 12%, rgba(255,255,255,0.018) 0%, transparent 55%)" }} />

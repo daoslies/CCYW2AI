@@ -3,7 +3,7 @@
 import { COLORS } from "../data/colors";
 import { useEffect, useRef, useState } from "react";
 
-export default function Gibbet({ x, y, angle, state, poisoned, poisonAge, gainPopups = [] }) {
+export default function Gibbet({ x, y, angle, state, poisoned, poisonAge, gainPopups = [], showEyes = true, color }) {
   const happy = state === "happy";
   const sniffing = state === "sniffing";
   const harvesting = state === "harvesting";
@@ -11,6 +11,10 @@ export default function Gibbet({ x, y, angle, state, poisoned, poisonAge, gainPo
   const harvestBob = harvesting ? 3 * Math.abs(Math.sin(Date.now() * 0.012)) : 0;
   const scaleX = happy ? 1.14 : poisoned ? 0.88 : sniffing ? sniffScale : 1;
   const scaleY = happy ? 0.91 : poisoned ? 1.18 : 1;
+  // Eyes logic: show only if showEyes is true and not poisoned and not state==='body'
+  const eyesVisible = showEyes && !poisoned && state !== "body";
+  // Use color prop for main body color, fallback to default
+  const mainColor = color || "#cc9660";
   return (
     <g transform={`translate(${x}, ${y + harvestBob})`}>
       {/* Resource gain popups */}
@@ -38,9 +42,9 @@ export default function Gibbet({ x, y, angle, state, poisoned, poisonAge, gainPo
       <ellipse cx={0} cy={19} rx={15} ry={5} fill="rgba(0,0,0,0.28)" />
       <g transform={`scale(${scaleX}, ${scaleY})`}>
         <ellipse cx={0} cy={0} rx={15 * sniffScale} ry={14} fill="#b8814a" />
-        <ellipse cx={0} cy={0} rx={14} ry={13} fill="#cc9660" />
+        <ellipse cx={0} cy={0} rx={14} ry={13} fill={mainColor} />
         <ellipse cx={0} cy={5} rx={9} ry={8} fill="#e8c49e" opacity={poisoned ? 0.18 + 0.3 * poisonAge : 0.48} />
-        {!poisoned && (
+        {eyesVisible && (
           <>
             <circle cx={-6} cy={-4} r={4.8} fill="white" />
             <circle cx={ 6} cy={-4} r={4.8} fill="white" />
