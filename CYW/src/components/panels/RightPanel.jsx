@@ -6,13 +6,12 @@ import { useWorld } from "../../store/worldStore.jsx";
 import DropZone from "../dragdrop/DropZone.jsx";
 import DragLayer from "../dragdrop/DragLayer.jsx";
 import Gibbet from "../gibbet/Gibbet.jsx";
+import { useDragStore } from "../../store/dragStore.jsx";
 
 export default function RightPanel({
   rightTab,
   setRightTab,
   upgradesSidebar,
-  draggingBrain,
-  draggingBody,
   combineBrain,
   combineBody,
   onDropBrain,
@@ -20,6 +19,10 @@ export default function RightPanel({
   onCombine,
   onCancel,
 }) {
+  const { assignments, unassignGibbet } = useWorld();
+  const { dragging } = useDragStore(); // was draggingItem
+  const draggingBrain = dragging?.type === "brain" ? dragging.payload : null;
+  const draggingBody = dragging?.type === "body" ? dragging.payload : null;
   return (
     <>
       <div style={{
@@ -105,6 +108,47 @@ export default function RightPanel({
         onDropBody={onDropBody}
         onCombine={onCombine}
         onCancel={onCancel}
+        isActive={!!draggingBrain || !!draggingBody || !!combineBrain || !!combineBody}
+      />
+      <DragLayer renderItem={({ type, payload }) => {
+        if (type === "brain") return (
+          <span role="img" aria-label="brain" style={{ fontSize: 28, filter: "drop-shadow(0 4px 12px #7dd3fc88)" }}>🧠</span>
+        );
+        if (type === "body") return (
+          <svg width={32} height={32} style={{ filter: "drop-shadow(0 4px 12px #a78bfa88)" }}>
+            <Gibbet x={16} y={16} angle={0} state={"body"} poisoned={false} gainPopups={[]} showEyes={false} color={payload.color} />
+          </svg>
+        );
+        if (type === "gibbet") return (
+          <svg width={32} height={32} style={{ filter: "drop-shadow(0 4px 12px #4ade8088)" }}>
+            <Gibbet x={16} y={16} angle={0} state={"idle"} poisoned={false} gainPopups={[]} showEyes={true} color={payload.color} />
+          </svg>
+        );
+        return null;
+      }} />
+      <DropZone
+        accepts={["gibbet"]}
+        onDrop={item => {
+          const slot = Object.keys(assignments).find(slotId => (assignments[slotId] || []).includes(item.id));
+          if (slot) {
+            unassignGibbet(slot, item.id);
+          }
+        }}
+        style={{
+          position: "fixed",
+          left: 0,
+          top: 0,
+          width: "100vw",
+          height: "100vh",
+          zIndex: 1,
+          pointerEvents: "none",
+        }}
+        activeStyle={{
+          pointerEvents: "auto",
+          border: "2px dashed #f87171",
+          background: "rgba(248,113,113,0.08)",
+          zIndex: 1000,
+        }}
       />
     </>
   );

@@ -138,7 +138,7 @@ export function makeGS(upgradeLevels = {}, UPGRADES = [], config = {}) {
 // Extracted per-gibbet logic
 function tickGibbet(gs, g, gibbetId, network, now, dt) {
   if (!network) return;
-  console.log('[tickGibbet] Ticking gibbet', gibbetId, 'state:', g.state, 'x:', g.x, 'y:', g.y);
+
   // NN re-evaluation
   if (now - g.lastNNTick > NN_TICK_MS) {
     g.lastNNTick = now;
@@ -267,7 +267,7 @@ function evalNN(gs, g, gibbetId, network) {
     Math.hypot(r.x - g.x, r.y - g.y) < Math.hypot(best.x - g.x, best.y - g.y) ? r : best);
   nearest.claimedBy = gibbetId;
   g.target = { resourceId: nearest.id, x: nearest.x, y: nearest.y, colorId };
-  console.log('[evalNN] Gibbet', gibbetId, 'target set:', g.target);
+
   g.sniffingUntil = Date.now() + 300 + Math.random() * 400;
 }
 
@@ -350,7 +350,7 @@ export function snapshot(gs) {
     weather: gs.weather ?? 0,
     config: gs.config,
   };
-  console.log('[snapshot] gibbets:', snap.gibbets);
+
   return snap;
 }
 

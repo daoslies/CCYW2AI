@@ -280,7 +280,7 @@ function train(network, data, opts = {}) {
     if (onEpoch) onEpoch(epoch, avgLoss);
 
     if (logEvery && epoch % logEvery === 0) {
-      console.log(`Epoch ${epoch.toString().padStart(5)} | loss: ${avgLoss.toExponential(6)}`);
+
     }
   }
 }
@@ -297,7 +297,7 @@ function forward(network, input) {
 // ---------------------------------------------------------------------------
 
 function runXORDemo() {
-  console.log('=== Categorical NN – XOR Demo ===\n');
+
 
   // Network mirrors the Haskell architecture:
   //   network = dense 2 4 w1 >>> relu >>> dense 4 1 w2 >>> sigmoid
@@ -338,24 +338,23 @@ function runXORDemo() {
     lossHistory[lossHistory.length - 1].loss > 1e-3 && attempt < 10
   );
 
-  console.log(`Converged after ${attempt} attempt(s)\n`);
+
 
   const logAt = [1000, 2000, 3000, 5000, 7000, 10000];
   for (const { epoch, loss } of lossHistory.filter(p => logAt.includes(p.epoch))) {
-    console.log(`Epoch ${String(epoch).padStart(5)} | loss: ${loss.toExponential(6)}`);
+
   }
 
-  console.log('\n--- Results ---');
+
   for (const { input, target } of xorData) {
     const out = forward(network, input);
     const pred = out[0] > 0.5 ? 1 : 0;
-    console.log(
-      `[${input}] -> [${out[0].toFixed(6)}]  → ${pred} (expected: ${target[0]})`
-    );
+
+      // `[${input}] -> [${out[0].toFixed(6)}]  → ${pred} (expected: ${target[0]})` // debug output removed
   }
 
   const finalLoss = lossHistory[lossHistory.length - 1].loss;
-  console.log(`\nFinal loss: ${finalLoss.toExponential(6)}`);
+
 
   return { network, lossHistory };
 }

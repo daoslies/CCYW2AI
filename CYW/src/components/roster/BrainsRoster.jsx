@@ -1,5 +1,6 @@
 import React from "react";
 import { useWorld } from "../../store/worldStore.jsx";
+import { useDragStore } from "../../store/dragStore.jsx";
 import { RosterSection, RosterItem, StatusPip, ActionButton } from "./RosterSection.jsx";
 import { R } from "../../styles/rosterTokens.js";
 import { NETWORK_CONFIG_T1 } from "../../data/networkConfig.js";
@@ -16,6 +17,12 @@ function brainAccuracy(brain) {
 
 export default function BrainsRoster({ onDragStart }) {
   const { brains, addBrain, usedBrainIds, activeTrainerId, setActiveTrainerId } = useWorld();
+  const { setDraggingItem } = useDragStore();
+
+  const handleDragStart = (brain) => {
+    setDraggingItem({ type: "brain", payload: brain });
+    if (onDragStart) onDragStart(brain);
+  };
 
   return (
     <RosterSection
@@ -48,7 +55,7 @@ export default function BrainsRoster({ onDragStart }) {
                 type="brain"
                 id={brain.id}
                 payload={brain}
-                onDragStart={onDragStart}
+                onDragStart={() => handleDragStart(brain)}
               >
                 <span role="img" aria-label="brain" style={{ fontSize: 28, margin: 0, padding: 0, display: "block" }}>
                   🧠

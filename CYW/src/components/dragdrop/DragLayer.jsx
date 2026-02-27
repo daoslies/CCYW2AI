@@ -8,6 +8,9 @@ export default function DragLayer({ renderItem }) {
 
   const { current, type, payload } = dragging;
 
+  // Defensive: check if current exists and has x/y
+  if (!current || typeof current.x !== "number" || typeof current.y !== "number") return null;
+
   // Render only the icon/image for each type
   let content = null;
   if (type === "brain") {

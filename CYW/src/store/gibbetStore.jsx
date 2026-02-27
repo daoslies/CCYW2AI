@@ -44,14 +44,14 @@ export function GibbetProvider({ children }) {
 
   const networkMapRef = useRef(new Map());
   const getNetwork = (id) => {
-    console.log('[getNetwork] called for id:', id, 'current gibbets:', gibbets);
+
     if (!networkMapRef.current.has(id)) {
       const gibbet = gibbets.find(g => g.id === id);
       const config = gibbet?.config ?? NETWORK_CONFIG_T1;
-      console.log(`[getNetwork] Creating network for gibbet ${id} with config`, config);
+
       networkMapRef.current.set(id, makeNetwork(config.layers));
     } else {
-      console.log(`[getNetwork] Fetched existing network for gibbet ${id}`);
+
     }
     return networkMapRef.current.get(id);
   };
@@ -87,7 +87,7 @@ export function GibbetProvider({ children }) {
   const assignGibbet = useCallback((slot, gibbetId) => {
     if (gibbetId != null) {
       const net = getNetwork(gibbetId);
-      console.log(`[assignGibbet] Assigning gibbet ${gibbetId} to slot ${slot}. Network exists:`, !!net);
+
     }
     setAssignments(prev => {
       const arr = prev[slot] || [];

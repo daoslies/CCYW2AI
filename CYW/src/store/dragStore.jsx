@@ -53,13 +53,20 @@ export function DragProvider({ children }) {
     };
   }, [endDrag]);
 
+  // Provide setDraggingItem for compatibility
+  const setDraggingItem = (item) => setDragging(item);
+
   return (
-    <DragContext.Provider value={{ dragging, startDrag, endDrag }}>
+    <DragContext.Provider value={{ dragging, startDrag, endDrag, setDraggingItem }}>
       {children}
     </DragContext.Provider>
   );
 }
 
 export function useDrag() {
+  return useContext(DragContext);
+}
+
+export function useDragStore() {
   return useContext(DragContext);
 }

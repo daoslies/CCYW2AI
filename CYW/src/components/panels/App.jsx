@@ -18,6 +18,7 @@ import RosterSection from "../roster/RosterSection.jsx";
 import AccuracyRing from "../roster/AccuracyRing.jsx";
 import Gibbet from "../gibbet/Gibbet.jsx";
 import { CombinePanel } from "./RightPanel.jsx";
+import RightPanel from "./RightPanel.jsx";
 
 function safeNum(val, fallback = 0) {
   return typeof val === "number" && isFinite(val) ? val : fallback;
@@ -769,89 +770,10 @@ export default function App() {
         </div>
 
         {/* Right: Upgrades/Gibbet Roster sidebar (fixed) */}
-        <div style={{
-          width: 280,
-          minWidth: 180,
-          maxWidth: 340,
-          background: "#0a0e1a",
-          borderLeft: "1px solid #1a1e2a",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "flex-start",
-          position: "fixed",
-          right: 0,
-          top: 0,
-          bottom: 0,
-          zIndex: 10,
-          padding: "32px 0 0 0",
-          maxHeight: `${100 / UI_ZOOM}vh`,
-          overflowY: "auto"
-        }}>
-          {/* Tab buttons */}
-          <div style={{ display: "flex", gap: 0, width: "100%", marginBottom: 18 }}>
-            <button
-              onClick={() => setRightTab("upgrades")}
-              style={{
-                flex: 1,
-                padding: "10px 0",
-                border: "none",
-                borderBottom: rightTab === "upgrades" ? "3px solid #60a5fa" : "1px solid #222",
-                background: rightTab === "upgrades" ? "#181a22" : "#10101a",
-                color: rightTab === "upgrades" ? "#60a5fa" : "#aaa",
-                fontWeight: 600,
-                fontSize: 15,
-                cursor: "pointer",
-                borderTopLeftRadius: 12,
-                borderTopRightRadius: 0
-              }}
-            >
-              Upgrades
-            </button>
-            <button
-              onClick={() => setRightTab("gibbets")}
-              style={{
-                flex: 1,
-                padding: "10px 0",
-                border: "none",
-                borderBottom: rightTab === "gibbets" ? "3px solid #4ade80" : "1px solid #222",
-                background: rightTab === "gibbets" ? "#181a22" : "#10101a",
-                color: rightTab === "gibbets" ? "#4ade80" : "#aaa",
-                fontWeight: 600,
-                fontSize: 15,
-                cursor: "pointer",
-                borderTopLeftRadius: 0,
-                borderTopRightRadius: 12
-              }}
-            >
-              Grow Gibbets
-            </button>
-          </div>
-          {/* Tab content */}
-          <div style={{ width: "100%" }}>
-            {rightTab === "upgrades" && (
-              <div style={{ padding: "0 20px 32px 20px" }}>
-                {upgradesSidebar}
-              </div>
-            )}
-
-            {rightTab === "gibbets" && (
-              <div style={{ padding: "0 12px 32px", display: "flex", flexDirection: "column", gap: 12 }}>
-                <BrainsRoster onDragStart={setDraggingBrain} />
-                <BodiesRoster onDragStart={setDraggingBody} />
-                <GibbetRoster />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* DEBUG: Show drag state */}
-        <div style={{position: 'fixed', right: 320, top: 10, zIndex: 9999, background: '#222', color: '#fff', padding: 8, borderRadius: 6, fontSize: 13, opacity: 0.85}}>
-          <div>draggingBrain: {draggingBrain ? (draggingBrain.name || draggingBrain.id || '[object]') : 'null'}</div>
-          <div>draggingBody: {draggingBody ? (draggingBody.name || draggingBody.id || '[object]') : 'null'}</div>
-        </div>
-        {/* CombinePanel outside sidebar, fixed right */}
-        <CombinePanel
+        <RightPanel
+          rightTab={rightTab}
+          setRightTab={setRightTab}
+          upgradesSidebar={upgradesSidebar}
           draggingBrain={draggingBrain}
           draggingBody={draggingBody}
           combineBrain={combineBrain}
@@ -860,52 +782,14 @@ export default function App() {
           onDropBody={handleDropBody}
           onCombine={handleCombine}
           onCancel={handleCombineCancel}
-          isActive={!!draggingBrain || !!draggingBody || !!combineBrain || !!combineBody}
         />
-        {/* DragLayer overlays everything, renders the in-hand item */}
-        <DragLayer renderItem={({ type, payload }) => {
-          // Render only the icon/image for each type
-          if (type === "brain") return (
-            <span role="img" aria-label="brain" style={{ fontSize: 28, filter: "drop-shadow(0 4px 12px #7dd3fc88)" }}>🧠</span>
-          );
-          if (type === "body") return (
-            <svg width={32} height={32} style={{ filter: "drop-shadow(0 4px 12px #a78bfa88)" }}>
-              <Gibbet x={16} y={16} angle={0} state={"body"} poisoned={false} gainPopups={[]} showEyes={false} color={payload.color} />
-            </svg>
-          );
-          if (type === "gibbet") return (
-            <svg width={32} height={32} style={{ filter: "drop-shadow(0 4px 12px #4ade8088)" }}>
-              <Gibbet x={16} y={16} angle={0} state={"idle"} poisoned={false} gainPopups={[]} showEyes={true} color={payload.color} />
-            </svg>
-          );
-          return null;
-        }} />
-        {/* Add a global DropZone for gibbet unassignment */}
-        <DropZone
-          accepts={["gibbet"]}
-          onDrop={item => {
-            // Find which slot (terrarium) this gibbet is assigned to
-            const slot = Object.keys(assignments).find(slotId => (assignments[slotId] || []).includes(item.id));
-            if (slot) {
-              unassignGibbet(slot, item.id);
-            }
-          }}
-          style={{
-            position: "fixed",
-            left: 0,
-            top: 0,
-            width: "100vw",
-            height: "100vh",
-            zIndex: 1, // below drag layer and panels
-            pointerEvents: "none", // only activate when dragging
-          }}
-          activeStyle={{
-            pointerEvents: "auto",
-            border: "2px dashed #f87171",
-            background: "rgba(248,113,113,0.08)",
-            zIndex: 1000,
-          }}
-        />
+        {rightTab === "gibbets" && (
+          <div style={{ padding: "0 12px 32px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <BrainsRoster setDraggingBrain={setDraggingBrain} />
+            <BodiesRoster setDraggingBody={setDraggingBody} />
+            <GibbetRoster />
+          </div>
+        )}
       </div>
     </DragProvider>
   );

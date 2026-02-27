@@ -6,8 +6,13 @@ import Gibbet from "../gibbet/Gibbet.jsx";
 import DraggableItem from "../dragdrop/DraggableItem.jsx";
 import { COLORS } from "../../data/colors.js";
 
-export default function BodiesRoster({ onDragStart }) {
+export default function BodiesRoster({ onDragStart, setDraggingBody }) {
   const { bodies, addBody, usedBodyIds } = useWorld();
+
+  const handleDragStart = (body) => {
+    if (setDraggingBody) setDraggingBody(body);
+    if (onDragStart) onDragStart(body);
+  };
 
   return (
     <RosterSection
@@ -37,7 +42,7 @@ export default function BodiesRoster({ onDragStart }) {
                 type="body"
                 id={body.id}
                 payload={body}
-                onDragStart={onDragStart}
+                onDragStart={() => handleDragStart(body)}
               >
                 <svg width={32} height={32} style={{ display: "block", margin: 0, padding: 0 }}>
                   <Gibbet x={16} y={16} angle={0} state={"body"} poisoned={false} gainPopups={[]} showEyes={false} color={body.color} />
