@@ -5,19 +5,64 @@ import NetworkViz from "./NetworkViz";
 import Terrarium from "./Terrarium";
 import { UPGRADES } from "../data/upgrades";
 import { QUOTES } from "../data/quotes";
-import { useGibbets } from "../store/gibbetStore.jsx";
+import { useWorld } from "../store/worldStore.jsx";
 import GibbetRoster from "./GibbetRoster.jsx";
 import Gibbet from "./Gibbet.jsx";
 import { NETWORK_CONFIG_T1, NETWORK_CONFIG_T2 } from "../data/networkConfig.js";
+import BrainsRoster from "./BrainsRoster.jsx";
+import BodiesRoster from "./BodiesRoster";
+
+// CombinePanel: slides out from right when dragging a brain or body
+function CombinePanel({ draggingBrain, draggingBody, onCombine, onCancel }) {
+  const isActive = draggingBrain || draggingBody;
+  return (
+    <div style={{
+      position: "fixed",
+      right: isActive ? 0 : -340,
+      top: 0,
+      width: 340,
+      height: "100vh",
+      background: "#181a22",
+      boxShadow: isActive ? "-4px 0 24px #0006" : "none",
+      borderLeft: "1px solid #1a1e2a",
+      zIndex: 30,
+      transition: "right 0.32s cubic-bezier(.7,.2,.2,1)",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      pointerEvents: isActive ? "auto" : "none"
+    }}>
+      <div style={{ width: "100%", maxWidth: 320, background: "#09090f", border: "1px solid #111120", borderRadius: 16, padding: "24px 18px 18px", margin: "0 auto", display: "flex", flexDirection: "column", gap: 18 }}>
+        <div style={{ color: "#7dd3fc", fontWeight: 600, fontSize: 18, marginBottom: 8 }}>Combine Panel</div>
+        {draggingBrain && (
+          <div style={{ color: "#b6e3ff", fontWeight: 500, fontSize: 15, marginBottom: 8 }}>Brain: {draggingBrain.name || `Brain #${draggingBrain.id}`}</div>
+        )}
+        {draggingBody && (
+          <div style={{ color: "#b6e3ff", fontWeight: 500, fontSize: 15, marginBottom: 8 }}>Body: {draggingBody.name || `Body #${draggingBody.id}`}</div>
+        )}
+        <button
+          style={{ background: "#222", color: "#7dd3fc", border: "none", borderRadius: 8, padding: "10px 18px", fontSize: 16, fontWeight: 600, cursor: "pointer", marginTop: 18, opacity: draggingBrain && draggingBody ? 1 : 0.5 }}
+          disabled={!draggingBrain || !draggingBody}
+          onClick={() => draggingBrain && draggingBody && onCombine(draggingBrain, draggingBody)}
+        >
+          Combine to Create Gibbet
+        </button>
+        <button style={{ marginTop: 12, background: "#222", color: "#aaa", border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 14, cursor: "pointer" }} onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  );
+}
 
 function safeNum(val, fallback = 0) {
   return typeof val === "number" && isFinite(val) ? val : fallback;
 }
 
 function GibbetBioPanel() {
-  const { gibbets, selectedGibbetId } = useGibbets();
-  const gibbet = gibbets.find(g => g.id === selectedGibbetId);
-  if (!gibbet) return null;
+  const { gibbets, brains, bodies, activeTrainerId } = useWorld();
+  // Find the gibbet assigned to the trainer's brain
+  const trainerGibbet = gibbets.find(g => g.brainId === activeTrainerId);
+  if (!trainerGibbet) return null;
   return (
     <div style={{
       background: "#181a22",
@@ -33,11 +78,12 @@ function GibbetBioPanel() {
     }}>
       {/* Gibbet SVG avatar */}
       <svg width={56} height={56} viewBox="-20 -10 40 40" style={{ borderRadius: "50%", background: "#222", border: "2px solid #333" }}>
-        <Gibbet x={safeNum(0)} y={safeNum(0)} angle={safeNum(0)} state="idle" poisoned={false} poisonAge={safeNum(0)} />
+        {/* TODO: pass body/brain info to Gibbet */}
+        {/* <Gibbet ... /> */}
       </svg>
       <div style={{ flex: 1 }}>
-        <div style={{ color: "#7dd3fc", fontWeight: 600, fontSize: 16 }}>{gibbet.name}</div>
-        <div style={{ color: "#aaa", fontSize: 13, marginTop: 2, whiteSpace: "pre-line" }}>{gibbet.bio}</div>
+        <div style={{ color: "#7dd3fc", fontWeight: 600, fontSize: 16 }}>{trainerGibbet.name}</div>
+        <div style={{ color: "#aaa", fontSize: 13, marginTop: 2, whiteSpace: "pre-line" }}>{trainerGibbet.bio}</div>
       </div>
     </div>
   );
@@ -48,19 +94,124 @@ function GibbetBioPanel() {
 // -----------------------------------------------------------------------------
 // The key flow to keep in your head is: indicator shown → encoded as scalar → fed into network → output decoded back to colour → user presses a button → that becomes the target → 20 backprop steps run → weights update → predictions panel reflects the new state. Everything else is UI around that loop.
 
+// EntityPicker: inline selector for brains/bodies
+function EntityPicker({ label, items, selectedId, onSelect, renderItem }) {
+  return (
+    <div style={{ display: "flex", gap: 6, alignItems: "center", maxHeight: 120, overflowX: "auto" }}>
+      {items.map(item => (
+        <div
+          key={item.id}
+          onClick={() => onSelect(item.id)}
+          style={{
+            border: selectedId === item.id ? "2px solid #3b82f6" : "1px solid #222",
+            background: selectedId === item.id ? "#181a22" : "#10101a",
+            color: selectedId === item.id ? "#7dd3fc" : "#aaa",
+            borderRadius: 10,
+            padding: "8px 12px",
+            cursor: "pointer",
+            fontWeight: 500,
+            minWidth: 60,
+            boxShadow: selectedId === item.id ? "0 0 8px #3b82f6aa" : "none",
+            marginRight: 4,
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          {renderItem(item)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Persistent CombinePanel at bottom of gibbets tab
+function PersistentCombinePanel() {
+  const { brains, bodies, gibbets, combineGibbet, usedBrainIds, usedBodyIds } = useWorld();
+  const [selectedBrainId, setSelectedBrainId] = useState(null);
+  const [selectedBodyId, setSelectedBodyId] = useState(null);
+
+  const availableBrains = brains.filter(b => !usedBrainIds.has(b.id));
+  const availableBodies = bodies.filter(b => !usedBodyIds.has(b.id));
+
+  const selectedBrain = brains.find(b => b.id === selectedBrainId);
+  const selectedBody = bodies.find(b => b.id === selectedBodyId);
+
+  // Compatibility: for now, always true (TODO: use isCompatible)
+  const compatible = selectedBrain && selectedBody ? true : null;
+  const canCombine = selectedBrainId && selectedBodyId && compatible;
+
+  return (
+    <div style={{ borderTop: "1px solid #1a1a2a", marginTop: 12, paddingTop: 12 }}>
+      <div style={{ fontSize: 9, letterSpacing: "0.15em", color: "#444", marginBottom: 8 }}>COMBINE</div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <EntityPicker
+          label="brain"
+          items={availableBrains}
+          selectedId={selectedBrainId}
+          onSelect={setSelectedBrainId}
+          renderItem={b => (
+            <span>{b.name}<span style={{ color: "#444", fontSize: 9, marginLeft: 6 }}>{b.trainCount}× trained</span></span>
+          )}
+        />
+        <span style={{ color: "#333", fontSize: 16 }}>+</span>
+        <EntityPicker
+          label="body"
+          items={availableBodies}
+          selectedId={selectedBodyId}
+          onSelect={setSelectedBodyId}
+          renderItem={b => <span>{b.name}</span>}
+        />
+        <button
+          disabled={!canCombine}
+          onClick={() => {
+            if (canCombine) {
+              combineGibbet(selectedBrainId, selectedBodyId, `Gibbet ${gibbets.length + 1}`);
+              setSelectedBrainId(null);
+              setSelectedBodyId(null);
+            }
+          }}
+          style={{
+            borderRadius: 8,
+            border: "none",
+            background: canCombine ? "#22c55e" : "#1a1a2a",
+            color: canCombine ? "#0a0c16" : "#333",
+            fontWeight: 700,
+            padding: "6px 14px",
+            cursor: canCombine ? "pointer" : "not-allowed",
+            transition: "background 0.15s",
+            flexShrink: 0,
+          }}
+        >
+          →
+        </button>
+      </div>
+      {selectedBrainId && selectedBodyId && (
+        <div style={{ marginTop: 6, fontSize: 9, letterSpacing: "0.12em", color: compatible ? "#4ade80" : "#f87171" }}>
+          {compatible ? "compatible · ready to combine" : "incompatible"}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const {
+    brains,
+    bodies,
     gibbets,
     assignments,
     activeTrainerId,
     getNetwork,
-    updateGibbetMeta,
-    resetGibbet,
+    updateBrainMeta,
+    combineGibbet,
+    dissolveGibbet,
     assignGibbet,
+    unassignGibbet,
     setActiveTrainerId,
-    addGibbet,
-    ensureTerrariumAssignment,
-  } = useGibbets();
+    usedBrainIds,
+    usedBodyIds,
+  } = useWorld();
 
   // Get assigned gibbet IDs (now arrays)
   const trainerGibbetId = activeTrainerId;
@@ -68,20 +219,23 @@ export default function App() {
   const terrarium2GibbetIds = assignments.t2 || [];
 
   // Get gibbet objects
-  const trainerGibbet = gibbets.find(g => g.id === trainerGibbetId);
+  const trainerGibbet = gibbets.find(g => g.brainId === activeTrainerId);
   // For terrariums, get all assigned gibbets
   const terrarium1Gibbets = gibbets.filter(g => terrarium1GibbetIds.includes(g.id));
   const terrarium2Gibbets = gibbets.filter(g => terrarium2GibbetIds.includes(g.id));
 
-  // Get networks
-  const trainerNetwork = getNetwork(trainerGibbetId);
-  // For terrariums, get all assigned networks
-  const terrarium1Networks = terrarium1Gibbets.map(g => getNetwork(g.id));
-  const terrarium2Networks = terrarium2Gibbets.map(g => getNetwork(g.id));
+  // Get brain object
+  const trainerBrain = brains.find(b => b.id === activeTrainerId);
 
-  // Use gibbet meta for trainCount, lossHistory, etc.
-  const trainCount = trainerGibbet?.trainCount || 0;
-  const lossHistory = trainerGibbet?.lossHistory || [];
+  // Use brain meta for trainCount, lossHistory, etc.
+  const trainCount = trainerBrain?.trainCount || 0;
+  const lossHistory = trainerBrain?.lossHistory || [];
+
+  // Get networks
+  const trainerNetwork = getNetwork(activeTrainerId);
+  // For terrariums, get all assigned networks
+  const terrarium1Networks = terrarium1Gibbets.map(g => getNetwork(g.brainId));
+  const terrarium2Networks = terrarium2Gibbets.map(g => getNetwork(g.brainId));
 
   const [indicator, setIndicator] = useState(COLORS[Math.floor(Math.random() * 3)]);
   const [terrariumIndicator, setTerrariumIndicator] = useState(COLORS[0]);
@@ -105,6 +259,46 @@ export default function App() {
   const [activeQuoteIdx, setActiveQuoteIdx] = useState(() => Math.floor(Math.random() * QUOTES.length));
   const [activeQuoteLineIdx, setActiveQuoteLineIdx] = useState(0);
   const [quoteLineTimer, setQuoteLineTimer] = useState(null);
+
+  // Add state for drag and combine panel
+  const [draggingBrain, setDraggingBrain] = useState(null);
+  const [draggingBody, setDraggingBody] = useState(null);
+  const [combinePanelLocked, setCombinePanelLocked] = useState(false);
+
+  // Add a dummy state to force re-render after training
+  const [networkUpdateTick, setNetworkUpdateTick] = useState(0);
+
+  // Handler for drag start (from roster)
+  const handleBrainDragStart = (brain) => {
+    setDraggingBrain(brain);
+    setCombinePanelLocked(false);
+  };
+  const handleBodyDragStart = (body) => {
+    setDraggingBody(body);
+    setCombinePanelLocked(false);
+  };
+
+  // Handler for drop into combine panel
+  const handleCombineDrop = (brain, body) => {
+    setDraggingBrain(brain);
+    setDraggingBody(body);
+    setCombinePanelLocked(true);
+  };
+
+  // Handler for combine action
+  const handleCombine = (brain, body) => {
+    combineGibbet(brain, body);
+    setDraggingBrain(null);
+    setDraggingBody(null);
+    setCombinePanelLocked(false);
+  };
+
+  // Handler for cancel
+  const handleCombineCancel = () => {
+    setDraggingBrain(null);
+    setDraggingBody(null);
+    setCombinePanelLocked(false);
+  };
 
   // Rotate quote lines every 10 seconds
   useEffect(() => {
@@ -139,6 +333,10 @@ export default function App() {
   const UI_ZOOM = 1.4; // must match index.css html { zoom }
 
   const updatePredictions = useCallback(() => {
+    if (!trainerNetwork) {
+      setPredictions(null);
+      return;
+    }
     const preds = {};
     for (const c of COLORS) {
       const out = nnForward(trainerNetwork, c.oneHot);
@@ -148,6 +346,14 @@ export default function App() {
   }, [trainerNetwork]);
 
   useEffect(() => { updatePredictions(); }, []);
+
+  // Update predictions and reset UI when trainerNetwork, trainerBrain, or view changes
+  useEffect(() => {
+    updatePredictions();
+    setLastLoss(null);
+    setLastPressed(null);
+    setFlash(null);
+  }, [trainerNetwork, trainerBrain, view]);
 
   useEffect(() => {
     // If upgradesSidebar contains the unlock, check if it's been purchased
@@ -175,6 +381,7 @@ export default function App() {
   }, []);
 
   const handlePress = (pressedColor) => {
+    if (!trainerBrain) return; // Defensive: prevent null error
     const net = trainerNetwork;
     const inputVec = indicator.oneHot;
     const targetVal = pressedColor.oneHot;
@@ -187,7 +394,7 @@ export default function App() {
       loss = nnTrainStep(net, inputVec, targetVal, 0.4);
     }
 
-    updateGibbetMeta(trainerGibbetId, {
+    updateBrainMeta(trainerBrain.id, {
       trainCount: trainCount + 1,
       lossHistory: [...lossHistory.slice(-39), loss],
     });
@@ -195,6 +402,7 @@ export default function App() {
     setLastLoss(loss);
     setLastPressed(pressedColor);
     updatePredictions();
+    setNetworkUpdateTick(tick => tick + 1); // force re-render
 
     // Flash feedback
     setFlash(pressedColor.id === indicator.id ? "correct" : "wrong");
@@ -205,7 +413,7 @@ export default function App() {
   };
 
   const handleReset = () => {
-    resetGibbet(trainerGibbetId);
+    dissolveGibbet(trainerGibbetId);
     setLastLoss(null);
     setLastPressed(null);
     setFlash(null);
@@ -267,23 +475,14 @@ export default function App() {
       }}>
         <GibbetBioPanel />
         <div style={{ width: "100%", maxWidth: 400, margin: "0 auto 18px auto" }}>
-          {/* Show network viz for active terrarium only */}
-          {view === "terrarium" && terrariumUpgradeLevels.secondTerrarium >= 1 && activeTerrarium === 2 ? (
+          {trainerBrain && (
             <NetworkViz
-              network={terrarium2Networks && terrarium2Networks.length > 0 ? terrarium2Networks[0] : null}
-              inputValue={terrarium2Indicator.oneHot}
-              animTrigger={terrarium2Gibbets?.trainCount || 0}
+              brain={trainerBrain}
+              network={trainerNetwork}
+              inputValue={view === "trainer" ? indicator.oneHot : terrariumIndicator.oneHot}
+              animTrigger={networkUpdateTick}
               style={{ width: "100%", height: "auto", maxWidth: 400, aspectRatio: "1.06" }}
             />
-          ) : (
-            trainerNetwork && (
-              <NetworkViz
-                network={trainerNetwork}
-                inputValue={view === "trainer" ? indicator.oneHot : terrariumIndicator.oneHot}
-                animTrigger={trainCount}
-                style={{ width: "100%", height: "auto", maxWidth: 400, aspectRatio: "1.06" }}
-              />
-            )
           )}
         </div>
         {/* Resource counters for terrarium mode */}
@@ -723,10 +922,31 @@ export default function App() {
         </div>
         {/* Tab content */}
         <div style={{ width: "100%" }}>
-          {rightTab === "upgrades" ? upgradesSidebar : null}
-          {rightTab === "gibbets" ? <GibbetRoster /> : null}
+          {rightTab === "upgrades" && (
+            <div style={{ padding: "0 20px 32px 20px" }}>
+              {upgradesSidebar}
+            </div>
+          )}
+
+          {rightTab === "gibbets" && (
+            <div style={{ padding: "0 12px 32px", display: "flex", flexDirection: "column", gap: 12 }}>
+              <BrainsRoster />
+              <BodiesRoster />
+              <GibbetRoster />
+              <PersistentCombinePanel />
+            </div>
+          )}
         </div>
       </div>
+
+      {/* CombinePanel outside sidebar, fixed right */}
+      <CombinePanel
+        draggingBrain={draggingBrain}
+        draggingBody={draggingBody}
+        onCombine={handleCombine}
+        onCancel={handleCombineCancel}
+        isActive={!!draggingBrain || !!draggingBody || combinePanelLocked}
+      />
     </div>
   );
 }

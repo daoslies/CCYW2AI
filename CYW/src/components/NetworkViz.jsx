@@ -6,13 +6,13 @@ import { NETWORK_LAYERS } from "../data/networkConfig";
 // NetworkViz — live visualisation of the composed network
 //
 // Props:
-//   network      the compose(...) object from nn.js (via networkRef.current)
+//   brain        the brain object from gibbetStore (contains network, training metadata)
 //   inputValue   the scalar fed to the network right now (0.0 / 0.5 / 1.0)
 //   animTrigger  any value whose identity change fires the activation wave
-//                (pass trainCount from App.jsx)
+//                (pass brain.trainCount)
 //
 // The component is a drop-in SVG panel. Add it to App.jsx like:
-//   <NetworkViz network={networkRef.current} inputValue={indicator.value} animTrigger={trainCount} />
+//   <NetworkViz brain={brain} inputValue={indicator.value} animTrigger={trainCount} />
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ML team: Updated for multiclass output (3 neurons, softmax). Output neurons colored by class, opacity by probability, winner highlighted.
@@ -90,12 +90,16 @@ function safeNum(val, fallback = 0) {
   return typeof val === "number" && isFinite(val) ? val : fallback;
 }
 
-export default function NetworkViz({ network, inputValue, animTrigger }) {
+export default function NetworkViz({ brain, network: networkProp, inputValue, animTrigger }) {
+  // Defensive: extract network from prop or brain
+  const network = networkProp || brain?.network;
   const [waveLayer, setWaveLayer] = useState(-1);
   const waveRef = useRef(null);
 
   useEffect(() => {
-    if (animTrigger === undefined || animTrigger === null) return;
+    // Use animTrigger from brain.trainCount or passed prop
+    const trigger = animTrigger ?? brain?.trainCount;
+    if (trigger === undefined || trigger === null) return;
     if (waveRef.current) clearTimeout(waveRef.current);
     let li = 0;
     const tick = () => {
@@ -109,19 +113,22 @@ export default function NetworkViz({ network, inputValue, animTrigger }) {
     };
     tick();
     return () => { if (waveRef.current) clearTimeout(waveRef.current); };
-  }, [animTrigger]);
+  }, [animTrigger, brain?.trainCount]);
 
   // Defensive: always run all hooks, then conditionally render placeholder
   const isNetworkValid = network && network.layers;
 
   const { activations, weights } = useMemo(
     () => isNetworkValid ? getNetworkState(network, inputValue ?? [0,0,0]) : { activations: [], weights: [] },
-    [network, inputValue, animTrigger, isNetworkValid]
+    [network, inputValue, animTrigger, brain?.trainCount, isNetworkValid]
   );
 
   if (!isNetworkValid) {
     return <div style={{ width: "100%", height: 120, display: "flex", alignItems: "center", justifyContent: "center", color: "#38bdf8", fontSize: 15, opacity: 0.7 }}>No network assigned</div>;
   }
+
+  // Optionally display training metadata from brain
+  // Example: <div>Trained: {brain?.trainCount ?? 0} times</div>
 
   const maxWeights = weights.map(W =>
     Math.max(...W.flat().map(Math.abs), 1e-9)

@@ -1,0 +1,74 @@
+import React from "react";
+import { useWorld } from "../store/worldStore.jsx";
+import { RosterSection, RosterItem, StatusPip, ActionButton } from "./RosterSection.jsx";
+import { R } from "../styles/rosterTokens.js";
+import { NETWORK_CONFIG_T1 } from "../data/networkConfig.js";
+import AccuracyRing from "./AccuracyRing.jsx";
+
+function brainAccuracy(brain) {
+  // Dummy: returns 0-1 based on trainCount (replace with real logic)
+  if (!brain || !brain.trainCount) return 0;
+  return Math.min(1, brain.trainCount / 30);
+}
+
+export default function BrainsRoster() {
+  const { brains, addBrain, usedBrainIds, activeTrainerId, setActiveTrainerId } = useWorld();
+
+  return (
+    <RosterSection
+      title="Brains"
+      accent={R.accentBrain}
+      action={
+        <ActionButton
+          variant="accent"
+          size="sm"
+          onClick={() => addBrain(NETWORK_CONFIG_T1, `Brain ${brains.length + 1}`)}
+        >
+          + New
+        </ActionButton>
+      }
+    >
+      {brains.length === 0 && (
+        <span style={{ color: R.textMuted, fontSize: R.fontSm }}>
+          No brains — create one to begin training
+        </span>
+      )}
+      {brains.map(brain => {
+        const used = usedBrainIds.has(brain.id);
+        const isTraining = activeTrainerId === brain.id;
+        const accuracy = brainAccuracy(brain);
+        return (
+          <RosterItem key={brain.id} dimmed={used && !isTraining}>
+            <AccuracyRing value={accuracy} color={R.accentBrain} size={28} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                color: R.textPrimary,
+                fontSize: R.fontMd,
+                fontWeight: 500,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}>
+                {brain.name}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                <span style={{ color: R.textMuted, fontSize: R.fontSm }}>
+                  {brain.trainCount}× trained
+                </span>
+                <StatusPip used={used} usedLabel="in gibbet" />
+              </div>
+            </div>
+            <ActionButton
+              variant={isTraining ? "primary" : "default"}
+              size="sm"
+              disabled={used && !isTraining}
+              onClick={() => setActiveTrainerId(brain.id)}
+            >
+              {isTraining ? "Training" : "Train"}
+            </ActionButton>
+          </RosterItem>
+        );
+      })}
+    </RosterSection>
+  );
+}

@@ -15,7 +15,7 @@ import { NETWORK_CONFIG_T1 } from "../data/networkConfig";
 import { TerrariumScene } from "./TerrariumScene";
 import Resource from "./Resource";
 import TrainingButtons from "./TrainingButtons";
-import { useGibbets } from "../store/gibbetStore.jsx";
+import { useWorld } from "../store/worldStore.jsx";
 import Gibbet from "./Gibbet.jsx";
 
 export default function Terrarium({
@@ -25,18 +25,20 @@ export default function Terrarium({
   onResourceCounters,
   onTrainingPanel,
   onUpgradesSidebar,
-  onUpgradeLevelsChange, // <-- new prop
-  parentUpgradeLevels // <-- new prop
+  onUpgradeLevelsChange,
+  parentUpgradeLevels
 }) {
-  const { assignments, getNetwork, gibbets, updateGibbetMeta, selectedGibbetId, selectGibbet } = useGibbets();
-  // Get all assigned gibbet IDs for this slot
-  const gibbetIds = assignments[slot] || [];
-  // Build gibbetEntries for all assigned gibbets with networks
+  // UseWorld instead of useGibbets
+  const { assignments, gibbets, brains, getNetwork, updateGibbetMeta, activeTrainerId } = useWorld();
+  // Defensive: assignments, gibbets, brains may be empty
+  const gibbetIds = assignments?.[slot] || [];
   const gibbetEntries = gibbetIds
     .map(id => {
       const gibbet = gibbets.find(g => g.id === id);
-      const network = gibbet ? getNetwork(gibbet.id) : null;
-      return gibbet && network ? { id: gibbet.id, network } : null;
+      const brain = gibbet && gibbet.brainId != null ? brains.find(b => b.id === gibbet.brainId) : null;
+      // Use getNetwork for correct network instance
+      const network = brain ? getNetwork(brain.id) : null;
+      return gibbet && brain && network ? { id: gibbet.id, brain, network } : null;
     })
     .filter(Boolean);
 
@@ -74,13 +76,14 @@ export default function Terrarium({
     let running = true;
     function tick() {
       if (!running) return;
-      gameTick(gsRef.current, gibbetEntries, UPGRADES, config);
+      // Pass correct network instance for each gibbet
+      gameTick(gsRef.current, gibbetEntries.map(e => ({ id: e.id, network: e.network })), UPGRADES, config);
       setSnap(snapshot(gsRef.current));
       requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
     return () => { running = false; };
-  }, [gibbetIds.join(), gibbets.length, config]); // rerun if assignments or gibbets change
+  }, [gibbetIds.join(), gibbets.length, config, gibbetEntries]); // rerun if assignments or gibbets change
 
   function handleReset() {
     gsRef.current = makeGS(upgradeLevels, UPGRADES, config);
@@ -294,6 +297,23 @@ export default function Terrarium({
     setSnap(snapshot(gs));
   }
 
+  // Bodies array and roster UI
+  const [bodies, setBodies] = useState(() => [
+    // Starter body template
+    { id: 0, name: "Basic Body", template: "default", color: "#7dd3fc", createdAt: Date.now() }
+  ]);
+
+  // Add body function
+  const addBody = (name, template = "default", color = "#7dd3fc") => {
+    const id = bodies.length > 0 ? Math.max(...bodies.map(b => b.id)) + 1 : 0;
+    const body = { id, name, template, color, createdAt: Date.now() };
+    setBodies(prev => [...prev, body]);
+    return id;
+  };
+
+  // Defensive: selectedGibbetId may not be defined, so default to null
+  const selectedGibbetId = null; // TODO: wire up selection logic from context/store if needed
+
   // Defensive: always render container, even if no gibbets assigned
   const hasGibbets = gibbetEntries.length > 0;
 
@@ -340,6 +360,7 @@ export default function Terrarium({
         </div>
       )}
       {hasGibbets && <TerrariumScene snap={snap} />}
+      {/* Render bodies roster below gibbets roster */}
       {/* Glass edge radial vignette overlay */}
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", borderRadius: 20, background: "radial-gradient(ellipse at 28% 12%, rgba(255,255,255,0.018) 0%, transparent 55%)" }} />
     </div>

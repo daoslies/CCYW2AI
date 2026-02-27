@@ -3,24 +3,42 @@ import { makeNetwork } from "../engine/nn";
 import { NETWORK_CONFIG_T1, NETWORK_CONFIG_T2 } from "../data/networkConfig";
 
 let _gibbetId = 0;
-export function createGibbet(name, config = NETWORK_CONFIG_T1) {
+let _brainId = 0;
+
+function createBrain(config = NETWORK_CONFIG_T1) {
+  return {
+    id: _brainId++,
+    config,
+    network: makeNetwork(config.layers),
+    trainCount: 0,
+    lossHistory: [],
+    createdAt: Date.now(),
+  };
+}
+
+export function createGibbet(name, config = NETWORK_CONFIG_T1, brainId = null) {
   return {
     id: _gibbetId++,
     name,
     config,
-    trainCount: 0,
-    lossHistory: [],
+    brainId,
     createdAt: Date.now(),
     bio: `This is ${name}, a mysterious gibbet with untold potential.`,
-    picture: null, // can be a URL or null for now
+    picture: null,
   };
 }
 
 export const GibbetContext = createContext(null);
 
 export function GibbetProvider({ children }) {
+  const [brains, setBrains] = useState(() => {
+    const b1 = createBrain(NETWORK_CONFIG_T1);
+    return [b1];
+  });
+
   const [gibbets, setGibbets] = useState(() => {
-    const g1 = createGibbet("Gibbet I",  NETWORK_CONFIG_T1);
+    const b1 = brains[0];
+    const g1 = createGibbet("Gibbet I", NETWORK_CONFIG_T1, b1.id);
     return [g1];
   });
 
@@ -38,36 +56,46 @@ export function GibbetProvider({ children }) {
     return networkMapRef.current.get(id);
   };
 
-  // Assignments now use arrays for multi-gibbet support
-  const [assignments, setAssignments] = useState({ t1: [], t2: [] });
-  const [activeTrainerId, setActiveTrainerId] = useState(0);
-  const [selectedGibbetId, setSelectedGibbetId] = useState(0); // default to first gibbet
+  const getBrain = useCallback((id) => brains.find(b => b.id === id), [brains]);
 
-  const addGibbet = useCallback((name, config) => {
-    const g = createGibbet(name, config);
-    networkMapRef.current.set(g.id, makeNetwork(config.layers));
+  const addBrain = useCallback((config = NETWORK_CONFIG_T1) => {
+    const b = createBrain(config);
+    setBrains(prev => [...prev, b]);
+    return b.id;
+  }, []);
+
+  const addGibbet = useCallback((name, config, brainId = null) => {
+    let bId = brainId;
+    if (!bId) bId = addBrain(config);
+    const g = createGibbet(name, config, bId);
     setGibbets(prev => [...prev, g]);
     return g.id;
+  }, [addBrain]);
+
+  const updateBrainMeta = useCallback((id, patch) => {
+    setBrains(prev => prev.map(b => b.id === id ? { ...b, ...patch } : b));
   }, []);
 
   const updateGibbetMeta = useCallback((id, patch) => {
     setGibbets(prev => prev.map(g => g.id === id ? { ...g, ...patch } : g));
   }, []);
 
-  // Assign a gibbet to a slot (add to array, no duplicates)
+  const [assignments, setAssignments] = useState({ t1: [], t2: [] });
+  const [activeTrainerId, setActiveTrainerId] = useState(0);
+  const [selectedGibbetId, setSelectedGibbetId] = useState(0);
+
   const assignGibbet = useCallback((slot, gibbetId) => {
     if (gibbetId != null) {
-      const net = getNetwork(gibbetId); // Ensure network exists
+      const net = getNetwork(gibbetId);
       console.log(`[assignGibbet] Assigning gibbet ${gibbetId} to slot ${slot}. Network exists:`, !!net);
     }
     setAssignments(prev => {
       const arr = prev[slot] || [];
-      if (arr.includes(gibbetId)) return prev; // already assigned
+      if (arr.includes(gibbetId)) return prev;
       return { ...prev, [slot]: [...arr, gibbetId] };
     });
   }, [getNetwork]);
 
-  // Unassign a gibbet from a slot
   const unassignGibbet = useCallback((slot, gibbetId) => {
     setAssignments(prev => {
       const arr = prev[slot] || [];
@@ -78,13 +106,18 @@ export function GibbetProvider({ children }) {
   const resetGibbet = useCallback((id) => {
     const gibbet = gibbets.find(g => g.id === id);
     const config = gibbet?.config ?? NETWORK_CONFIG_T1;
-    networkMapRef.current.set(id, makeNetwork(config.layers));
-    updateGibbetMeta(id, { trainCount: 0, lossHistory: [] });
-  }, [gibbets, updateGibbetMeta]);
+    // Reset brain network and metadata
+    if (gibbet && gibbet.brainId != null) {
+      setBrains(prev => prev.map(b =>
+        b.id === gibbet.brainId
+          ? { ...b, network: makeNetwork(config.layers), trainCount: 0, lossHistory: [] }
+          : b
+      ));
+    }
+  }, [gibbets]);
 
   const selectGibbet = useCallback((id) => setSelectedGibbetId(id), []);
 
-  // No more auto-assignment: just ensure slot is initialized as empty array
   const ensureTerrariumAssignment = useCallback((slot) => {
     setAssignments(prev => {
       if (Array.isArray(prev[slot])) return prev;
@@ -95,10 +128,14 @@ export function GibbetProvider({ children }) {
   return (
     <GibbetContext.Provider value={{
       gibbets,
+      brains,
       assignments,
       activeTrainerId,
       getNetwork,
+      getBrain,
+      addBrain,
       addGibbet,
+      updateBrainMeta,
       updateGibbetMeta,
       assignGibbet,
       unassignGibbet,
