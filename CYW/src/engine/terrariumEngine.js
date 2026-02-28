@@ -67,6 +67,8 @@ export function spawnResource(colorId) {
     state: "active", stateAt: 0,
     scale: 0.75 + Math.random() * 0.5,
     claimedBy: null,
+    health: 1.0, // 0.0 → 1.0, depleted when reaches 0
+    maxHealth: 1.0,
   };
 }
 export function makeResources(gs) {
@@ -156,15 +158,21 @@ function tickGibbet(gs, g, gibbetId, network, now, dt) {
       if (d < COLLECT_DIST) {
         if (g.harvestTarget !== g.target.resourceId) {
           g.harvestTarget = g.target.resourceId;
-          g.harvestStarted = now;
           g.state = "harvesting";
         }
-        const HARVEST_MS = 800;
-        const harvestProgress = (now - g.harvestStarted) / HARVEST_MS;
-        g.harvestProgress = Math.min(1, harvestProgress);
-        if (harvestProgress >= 1) {
-          const res = gs.resources.find(r => r.id === g.target.resourceId);
-          if (res && res.state === "active") {
+        // New health-based harvesting logic
+        const res = gs.resources.find(r => r.id === g.target.resourceId);
+        if (res && res.state === "active") {
+          // Mining speed per gibbet (can be upgraded)
+          // Use a slower default mining rate and dt in ms
+          const mineRate = gs.mineSpeed ?? 0.001; // health per ms (slower)
+          const dtMs = Math.max(1, now - (g._lastHarvestTick || now));
+          g._lastHarvestTick = now;
+          res.health -= mineRate * dtMs;
+          g.harvestProgress = 1 - res.health / res.maxHealth;
+          if (res.health <= 0) {
+            res.health = 0;
+            // Collection logic (same as before, but now respawn at new location)
             res.state = "fading"; res.stateAt = now;
             res.claimedBy = null;
             const col = COLORS.find(col => col.id === res.colorId);
@@ -199,25 +207,23 @@ function tickGibbet(gs, g, gibbetId, network, now, dt) {
               g.state = "poisoned"; g.happyUntil = now + 700;
               gs.sparkles.push(...makeSparkle(res.x, res.y, "#ef4444", now));
             }
-            const cid = res.colorId;
-            setTimeout(() => {
-              const newPos = spawnResource(res.colorId);
-              res.x = newPos.x;
-              res.y = newPos.y;
-              if (gs._resourceFieldBonus && gs.resources.length < COLORS.length * (1 + gs._resourceFieldBonus)) {
-                gs.resources.push(spawnResource(res.colorId));
-              }
-              res.state = "respawning"; res.stateAt = Date.now();
-              setTimeout(() => { res.state = "active"; }, gs.resourceRespawnMs);
-            }, 650);
+            // Respawn: reset health, state, and position
+            const newPos = spawnResource(res.colorId);
+            res.x = newPos.x;
+            res.y = newPos.y;
+            res.health = res.maxHealth;
+            res.state = "active";
+            res.claimedBy = null;
+            g.harvestTarget = null;
+            g.target = null;
+            g.harvestProgress = 0;
+            g._lastHarvestTick = null;
           }
-          g.harvestTarget = null;
-          g.target = null;
-          g.harvestProgress = 0;
         }
       } else {
         g.harvestTarget = null;
         g.harvestProgress = 0;
+        g._lastHarvestTick = null;
         const perpX = -dy / d;
         const perpY = dx / d;
         const driftAmp = Math.min(d * 0.15, 12);
@@ -340,7 +346,11 @@ export function snapshot(gs) {
       poisonedUntil: g.poisonedUntil || 0,
       gainEvent: gainEvents.find(e => e.id === id) || null,
     })),
-    resources: gs.resources.map(r => ({ ...r })),
+    resources: gs.resources.map(r => ({
+      ...r,
+      health: r.health,
+      maxHealth: r.maxHealth,
+    })),
     sparkles: gs.sparkles.map(s => ({ ...s })),
     indicator: gs.indicator,
     collections: { ...gs.collections },

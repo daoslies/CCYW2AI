@@ -20,26 +20,24 @@ export default function Resource({ r, now, harvestProgress = 0, claimedBy, isCor
   // Progress arc: sweep from top clockwise
   const arcRadius = 22;
   const circumference = 2 * Math.PI * arcRadius;
-  const dash = harvestProgress * circumference;
+  // Show progress ring if resource is being mined (health < maxHealth)
+  const progress = (r.health < r.maxHealth) ? 1 - (r.health / r.maxHealth) : 0;
+  const dash = progress * circumference;
 
   return (
     <g transform={`translate(${r.x}, ${r.y + floatY})`} opacity={opacity}>
       {/* Harvest progress ring */}
-      {harvestProgress > 0 && (
+      {progress > 0 && (
         <circle
           cx={0} cy={0} r={arcRadius}
           fill="none"
           stroke={col.hex}
           strokeWidth={2}
           strokeDasharray={`${dash} ${circumference}`}
-          strokeDashoffset={circumference / 4}
+          strokeDashoffset={0}
           opacity={0.6}
           strokeLinecap="round"
         />
-      )}
-      {/* Claimed highlight */}
-      {claimedBy && (
-        <ellipse cx={0} cy={0} rx={24} ry={24} fill="none" stroke="#fff" strokeWidth={1.2} opacity={0.18} strokeDasharray="4 4" />
       )}
       {/* Resonance halo */}
       <circle cx={0} cy={0} r={haloRadius}
