@@ -43,6 +43,11 @@ function buildPositions() {
 }
 const NODE_POS = buildPositions();
 
+// Helper to safely coerce a value to a number, fallback if not valid
+function safeNum(val, fallback = 0) {
+  return typeof val === "number" && isFinite(val) ? val : fallback;
+}
+
 function getNetworkState(network, input) {
   const raw = [[...input]];
   let cur = input;
@@ -85,10 +90,22 @@ function outputNodeColor(idx, probs) {
   return { fill: base.hex, opacity };
 }
 
-const WAVE_STEP_MS = 110;
+// --- Pulse animation constants and helpers ---
+// Make the pulse even slower for a more pronounced effect
+const PULSE_LAYER_DURATION = 220; // ms per layer (was 150)
+const PULSE_OVERLAP = 50;         // ms overlap between layers (was 35)
+const PULSE_RISE = 80;            // ms rise time (was 50)
+const PULSE_FALL = 140;           // ms fall time (was 100)
+const PULSE_TOTAL = PULSE_LAYER_DURATION * DISPLAY_LAYERS.length;
 
-function safeNum(val, fallback = 0) {
-  return typeof val === "number" && isFinite(val) ? val : fallback;
+// Returns a phase [0,1] for a given layer at time t (ms since pulse start)
+function layerPhase(t, layerIndex, layerCount) {
+  const layerStart = layerIndex * (PULSE_LAYER_DURATION - PULSE_OVERLAP);
+  const localT = t - layerStart;
+  if (localT < 0) return 0;
+  if (localT < PULSE_RISE) return localT / PULSE_RISE;
+  if (localT < PULSE_LAYER_DURATION) return 1 - ((localT - PULSE_RISE) / PULSE_FALL);
+  return 0;
 }
 
 export default function NetworkViz({ brain, network: networkProp, inputValue, animTrigger }) {
@@ -97,24 +114,36 @@ export default function NetworkViz({ brain, network: networkProp, inputValue, an
   const [waveLayer, setWaveLayer] = useState(-1);
   const waveRef = useRef(null);
 
+  // Pulse animation state
+  const pulseStartRef = useRef(null);
+  const [animT, setAnimT] = useState(PULSE_TOTAL + 1); // start idle
+  const [loopPulse, setLoopPulse] = useState(false); // controls background looping
+
+  // Looping pulse: runs every second if not actively triggered
   useEffect(() => {
-    // Use animTrigger from brain.trainCount or passed prop
-    const trigger = animTrigger ?? brain?.trainCount;
-    if (trigger === undefined || trigger === null) return;
-    if (waveRef.current) clearTimeout(waveRef.current);
-    let li = 0;
-    const tick = () => {
-      setWaveLayer(li);
-      li++;
-      if (li < DISPLAY_LAYERS.length) {
-        waveRef.current = setTimeout(tick, WAVE_STEP_MS);
+    if (loopPulse) return; // don't double-trigger
+    const interval = setInterval(() => {
+      setLoopPulse(true); // set flag to trigger below
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [loopPulse]);
+
+  useEffect(() => {
+    // On animTrigger, start the pulse
+    pulseStartRef.current = performance.now();
+    let raf;
+    function tick() {
+      const t = performance.now() - pulseStartRef.current;
+      setAnimT(t);
+      if (t < PULSE_TOTAL) {
+        raf = requestAnimationFrame(tick);
       } else {
-        waveRef.current = setTimeout(() => setWaveLayer(-1), WAVE_STEP_MS);
+        setLoopPulse(false); // allow background loop to trigger again
       }
-    };
-    tick();
-    return () => { if (waveRef.current) clearTimeout(waveRef.current); };
-  }, [animTrigger, brain?.trainCount]);
+    }
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [animTrigger, loopPulse]);
 
   // Defensive: always run all hooks, then conditionally render placeholder
   const isNetworkValid = network && network.layers;
@@ -156,94 +185,168 @@ export default function NetworkViz({ brain, network: networkProp, inputValue, an
         width="100%"
         style={{ display: "block", overflow: "visible" }}
       >
-        {/* Edges */}
+        {/* Edges with pulse */}
         {weights.map((W, wi) => {
           const fromNodes = NODE_POS[wi];
           const toNodes   = NODE_POS[wi + 1];
           const maxW      = maxWeights[wi];
+          const connectionPhase = layerPhase(animT, wi, DISPLAY_LAYERS.length);
           return W.map((row, toIdx) =>
-            row.map((w, fromIdx) => (
-              <line
-                key={`e-${wi}-${toIdx}-${fromIdx}`}
-                x1={safeNum(fromNodes[fromIdx]?.x)}
-                y1={safeNum(fromNodes[fromIdx]?.y)}
-                x2={safeNum(toNodes[toIdx]?.x)}
-                y2={safeNum(toNodes[toIdx]?.y)}
-                stroke={edgeColor(w, maxW)}
-                strokeWidth={edgeWidth(w, maxW)}
-              />
-            ))
+            row.map((w, fromIdx) => {
+              const x1 = safeNum(fromNodes[fromIdx]?.x);
+              const y1 = safeNum(fromNodes[fromIdx]?.y);
+              const x2 = safeNum(toNodes[toIdx]?.x);
+              const y2 = safeNum(toNodes[toIdx]?.y);
+              const weightMag = Math.abs(w) / (maxW + 1e-9);
+              const weightSign = w > 0 ? 1 : -1;
+              // Base connection
+              const baseOpacity = weightMag * 0.4;
+              // Pulse spot
+              const spotT = connectionPhase; // 0 to 1
+              const spotX = x1 + (x2 - x1) * spotT;
+              const spotY = y1 + (y2 - y1) * spotT;
+              const pulseColor = weightSign > 0 ? "rgba(255,255,240,0.9)" : "rgba(180,220,255,0.9)";
+              // Make the connection pulse brightness also depend on the target neuron's activation (stronger for high-activation targets)
+              const targetActivation = activations[wi + 1]?.[toIdx] ?? 0;
+              const connectionPulseStrength = Math.abs(targetActivation) ** 1.7; // nonlinear scaling for more contrast
+              return (
+                <g key={`e-${wi}-${toIdx}-${fromIdx}`}> {/* Connection group */}
+                  <line
+                    x1={x1} y1={y1} x2={x2} y2={y2}
+                    stroke="#fff"
+                    strokeWidth={weightMag * 1.5}
+                    opacity={baseOpacity}
+                  />
+                  {/* Travelling pulse spot */}
+                  {connectionPhase > 0.01 && connectionPulseStrength > 0.01 && (
+                    <circle
+                      cx={spotX} cy={spotY}
+                      r={2 + weightMag * 2}
+                      fill={pulseColor}
+                      opacity={connectionPhase * weightMag * connectionPulseStrength * 0.7}
+                      style={{ filter: "blur(1px)" }}
+                    />
+                  )}
+                </g>
+              );
+            })
           );
         })}
-        {/* Nodes */}
+        {/* Nodes with pulse */}
         {DISPLAY_LAYERS.map((n, li) =>
           Array.from({ length: n }, (_, ni) => {
             const pos = NODE_POS[li]?.[ni] || { x: 0, y: 0 };
             const x = safeNum(pos.x);
             const y = safeNum(pos.y);
             const act = activations[li]?.[ni] ?? 0;
-            // Output layer: color by class, opacity by probability, highlight winner
-            if (li === DISPLAY_LAYERS.length - 1) {
-              const probs = activations[li];
-              const winner = probs.indexOf(Math.max(...probs));
-              let { fill, opacity } = outputNodeColor(ni, probs);
-              // Clamp and default opacity
-              opacity = typeof opacity === "number" && isFinite(opacity) ? Math.max(0, Math.min(1, opacity)) : 0;
-              return (
-                <g key={`n-${li}-${ni}`}>
-                  <circle
-                    cx={x} cy={y}
-                    r={NODE_R + 3}
-                    fill={fill}
-                    opacity={opacity * 0.7 + 0.2}
-                    style={{ filter: "blur(3px)" }}
-                  />
-                  <circle
-                    cx={x} cy={y}
-                    r={NODE_R}
-                    fill={fill}
-                    opacity={opacity * 0.8 + 0.15}
-                    stroke={winner === ni ? "#fff" : fill}
-                    strokeWidth={winner === ni ? 2.2 : 0.8}
-                  />
-                  <text
-                    x={x + NODE_R + 5}
-                    y={y + 4}
-                    fill="#555"
-                    fontSize={7.5}
-                    fontFamily="DM Mono, monospace"
-                  >
-                    {(probs[ni] * 100).toFixed(1)}%
-                  </text>
-                </g>
-              );
-            }
-            // Hidden/input: color input neurons by their class color, dim if not active
-            const isInputLayer = li === 0;
+            // Pulse phase for this layer
+            const phase = layerPhase(animT, li, DISPLAY_LAYERS.length);
+            // Base colour from activation
             let fill, glow;
-            if (isInputLayer) {
+            if (li === 0) {
               if (act === 1) {
                 fill = COLORS[ni].hex;
                 glow = COLORS[ni].glow;
               } else {
-                // Dimmed color for inactive input
                 fill = COLORS[ni].hex + '33';
                 glow = COLORS[ni].glow + '22';
               }
             } else {
               ({ fill, glow } = nodeColor(act));
             }
-            const isWave     = waveLayer === li;
+            // Pulse overlay: white glow scaled by phase * activation
+            // Make the difference between high and low activation pulses more pronounced
+            const pulseOpacity = phase * Math.max(0.15, Math.abs(act) ** 1.7); // nonlinear scaling for more contrast
+            const pulseRadius = NODE_R + phase * 4;
+            // Output layer: color by class, opacity by probability, highlight winner
+            if (li === DISPLAY_LAYERS.length - 1) {
+              const probs = activations[li];
+              const winner = probs.indexOf(Math.max(...probs));
+              let { fill: outFill, opacity: outOpacity } = outputNodeColor(ni, probs);
+              outOpacity = typeof outOpacity === "number" && isFinite(outOpacity) ? Math.max(0, Math.min(1, outOpacity)) : 0;
+              // Winner burst effect
+              const outputPhase = layerPhase(animT, li, DISPLAY_LAYERS.length);
+              const burstPhase = Math.max(0, outputPhase - 0.7) / 0.3;
+              return (
+                <g key={`n-${li}-${ni}`}>  
+                  {/* Confidence value above the output neuron, subtle and styled */}
+                  <g>
+                    <rect
+                      x={x - 22}
+                      y={y - NODE_R - 28}
+                      width={44}
+                      height={20}
+                      rx={9}
+                      fill="#101a2a"
+                      opacity={0.82}
+                    />
+                    <text
+                      x={x}
+                      y={y - NODE_R - 14}
+                      fill="#b6e3ff"
+                      fontSize={13}
+                      fontWeight={winner === ni ? 600 : 400}
+                      textAnchor="middle"
+                      fontFamily="DM Mono, monospace"
+                      style={{ textShadow: "0 1px 2px #0008" }}
+                    >
+                      {(probs[ni] * 100).toFixed(1)}%
+                    </text>
+                  </g>
+                  {/* Pulse overlay for output node */}
+                  {phase > 0.01 && (
+                    <circle
+                      cx={x} cy={y}
+                      r={pulseRadius}
+                      fill="none"
+                      stroke="rgba(255,255,255,0.9)"
+                      strokeWidth={1.5}
+                      opacity={pulseOpacity}
+                      style={{ filter: `blur(${phase * 2}px)` }}
+                    />
+                  )}
+                  {/* Winner burst */}
+                  {winner === ni && burstPhase > 0 && (
+                    <circle
+                      cx={x} cy={y}
+                      r={NODE_R + 6 + burstPhase * 16}
+                      fill="none"
+                      stroke={outFill}
+                      strokeWidth={1}
+                      opacity={(1 - burstPhase) * 0.8}
+                    />
+                  )}
+                  <circle
+                    cx={x} cy={y}
+                    r={NODE_R + 3}
+                    fill={outFill}
+                    opacity={outOpacity * 0.7 + 0.2}
+                    style={{ filter: "blur(3px)" }}
+                  />
+                  <circle
+                    cx={x} cy={y}
+                    r={NODE_R}
+                    fill={outFill}
+                    opacity={outOpacity * 0.8 + 0.15}
+                    stroke={winner === ni ? "#fff" : outFill}
+                    strokeWidth={winner === ni ? 2.2 : 0.8}
+                  />
+                </g>
+              );
+            }
+            // Hidden/input: color input neurons by their class color, dim if not active
             return (
               <g key={`n-${li}-${ni}`}>
-                {isWave && (
+                {/* Pulse overlay for hidden/input node */}
+                {phase > 0.01 && (
                   <circle
-                    className="wave-ring"
                     cx={x} cy={y}
-                    r={NODE_R + 2}
+                    r={pulseRadius}
                     fill="none"
-                    stroke={glow}
-                    strokeWidth={1.2}
+                    stroke="rgba(255,255,255,0.85)"
+                    strokeWidth={1.5}
+                    opacity={pulseOpacity}
+                    style={{ filter: `blur(${phase * 2}px)` }}
                   />
                 )}
                 <circle
@@ -293,13 +396,6 @@ export default function NetworkViz({ brain, network: networkProp, inputValue, an
             {label.toUpperCase()}
           </text>
         ))}
-        {/* Legend */}
-        <g transform={`translate(${SVG_W - 90}, 10)`}>
-          <line x1={0} y1={5} x2={16} y2={5} stroke="rgba(96,165,250,0.6)"  strokeWidth={1.5} />
-          <text x={20} y={9}  fill="#333" fontSize={7.5} fontFamily="DM Mono, monospace">+weight</text>
-          <line x1={0} y1={16} x2={16} y2={16} stroke="rgba(248,113,113,0.6)" strokeWidth={1.5} />
-          <text x={20} y={20} fill="#333" fontSize={7.5} fontFamily="DM Mono, monospace">−weight</text>
-        </g>
       </svg>
     </div>
   );
