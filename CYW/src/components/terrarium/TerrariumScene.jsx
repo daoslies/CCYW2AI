@@ -146,18 +146,48 @@ export function TerrariumScene({ snap, draggingIds = [], renderGibbet, ...rest }
         // Find roster gibbet and body for color
         const rosterGibbet = rosterGibbets.find(rg => rg.id === g.id);
         const body = rosterGibbet ? bodies.find(b => b.id === rosterGibbet.bodyId) : null;
+        // Confidence multiplier for this gibbet
+        const confMult = g.confMult ?? 1.0;
+        // Map confMult to a color/opacity (e.g., green for high, red for low)
+        const minColor = '#f87171'; // red
+        const maxColor = '#4ade80'; // green
+        // Simple linear interpolation for color (could use a better scale)
+        function lerpColor(a, b, t) {
+          const ah = parseInt(a.replace('#', ''), 16), bh = parseInt(b.replace('#', ''), 16);
+          const ar = (ah >> 16) & 0xff, ag = (ah >> 8) & 0xff, ab = ah & 0xff;
+          const br = (bh >> 16) & 0xff, bg = (bh >> 8) & 0xff, bb = bh & 0xff;
+          const rr = Math.round(ar + (br - ar) * t);
+          const rg = Math.round(ag + (bg - ag) * t);
+          const rb = Math.round(ab + (bb - ab) * t);
+          return `rgb(${rr},${rg},${rb})`;
+        }
+        const t = Math.max(0, Math.min(1, (confMult - 0.7) / 0.6)); // confMult 0.7-1.3 mapped to 0-1
+        const ringColor = lerpColor(minColor, maxColor, t);
+        const ringOpacity = 0.18 + 0.32 * t;
         return (
-          <Gibbet
-            key={g.id}
-            x={g.x}
-            y={g.y}
-            angle={g.angle}
-            state={g.state}
-            poisoned={g.poisonedUntil && now < g.poisonedUntil}
-            poisonAge={g.poisonedUntil ? Math.max(0, 1 - (now - (g.poisonedUntil - 700)) / 700) : 0}
-            gainPopups={gainPopupsMap[g.id] || []}
-            color={body?.color || rosterGibbet?.color || "#7dd3fc"}
-          />
+          <g key={g.id}>
+            {/* Confidence ring */}
+            <circle
+              cx={g.x}
+              cy={g.y}
+              r={22}
+              fill="none"
+              stroke={ringColor}
+              strokeWidth={4.5}
+              opacity={ringOpacity}
+              style={{ filter: `drop-shadow(0 0 8px ${ringColor})` }}
+            />
+            <Gibbet
+              x={g.x}
+              y={g.y}
+              angle={g.angle}
+              state={g.state}
+              poisoned={g.poisonedUntil && now < g.poisonedUntil}
+              poisonAge={g.poisonedUntil ? Math.max(0, 1 - (now - (g.poisonedUntil - 700)) / 700) : 0}
+              gainPopups={gainPopupsMap[g.id] || []}
+              color={body?.color || rosterGibbet?.color || "#7dd3fc"}
+            />
+          </g>
         );
       })}
       <rect x={0} y={0} width={TW} height={TH} fill="url(#gVignette)" />

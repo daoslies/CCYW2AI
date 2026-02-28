@@ -6,11 +6,13 @@ import GibbetVisual from "../gibbet/GibbetVisual.jsx";
 import DraggableItem from "../dragdrop/DraggableItem.jsx";
 import { COLORS } from "../../data/colors.js";
 import Gibbet from "../gibbet/Gibbet.jsx";
+import { confidenceMultiplier } from '../../engine/terrariumEngine.js';
+import { nnForward } from '../../engine/nn.js';
 
 const SLOT_LABELS = { t1: "T1", t2: "T2" };
 
 export default function GibbetRoster() {
-  const { gibbets, brains, bodies, assignments, assignGibbet, unassignGibbet, dissolveGibbet, simStates } = useWorld();
+  const { gibbets, brains, bodies, assignments, assignGibbet, unassignGibbet, dissolveGibbet, simStates, getNetwork } = useWorld();
   const [confirmingDissolve, setConfirmingDissolve] = useState(null);
 
   function getSlotsForGibbet(gibbetId) {
@@ -33,6 +35,23 @@ export default function GibbetRoster() {
         const simState = simStates[gibbet.id] || { state: gibbet.state || "idle", poisonedUntil: gibbet.poisoned ? Date.now() + 10000 : 0, now: Date.now() };
         const isConfirming = confirmingDissolve === gibbet.id;
         const isAssigned = assignedSlots.length > 0;
+
+        // Confidence/speed bars for all resource colors
+        let confMults = [];
+        if (brain) {
+          const network = getNetwork(brain.id);
+          if (network) {
+            confMults = COLORS.map(c => ({
+              color: c,
+              mult: confidenceMultiplier(network, c.id)
+            }));
+          }
+        }
+        // fallback: show 1.0 for all if not available
+        if (confMults.length === 0) {
+          confMults = COLORS.map(c => ({ color: c, mult: 1.0 }));
+        }
+
         return (
           <div key={gibbet.id} className="roster-item">
             <DraggableItem
@@ -55,6 +74,70 @@ export default function GibbetRoster() {
                 <div style={{ color: R.textMuted, fontSize: R.fontSm, marginTop: 1 }}>
                   {brain?.name ?? "?"} · {body?.name ?? "?"}
                 </div>
+                {/* Input→Output mapping with confidence and multiplier */}
+                {brain && (() => {
+                  const network = getNetwork(brain.id);
+                  if (!network) return null;
+
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 4 }}>
+                      {COLORS.map(inputColor => {
+                        const probs = nnForward(network, inputColor.oneHot);
+                        const maxIdx = probs.indexOf(Math.max(...probs));
+                        const outputColor = COLORS[maxIdx];
+                        const confidence = probs[maxIdx];
+                        const mult = confidenceMultiplier(network, inputColor.id);
+                        const isCorrect = outputColor.id === inputColor.id;
+
+                        return (
+                          <div key={inputColor.id} style={{
+                            display: "flex", alignItems: "center", gap: 5,
+                          }}>
+                            {/* Input dot */}
+                            <span style={{
+                              width: 7, height: 7, borderRadius: "50%",
+                              background: inputColor.hex, flexShrink: 0,
+                              boxShadow: `0 0 4px ${inputColor.glow}`,
+                            }} />
+
+                            {/* Arrow */}
+                            <span style={{ color: "#333", fontSize: 9 }}>→</span>
+
+                            {/* Output dot */}
+                            <span style={{
+                              width: 7, height: 7, borderRadius: "50%",
+                              background: outputColor.hex, flexShrink: 0,
+                              boxShadow: `0 0 4px ${outputColor.glow}`,
+                              opacity: 0.4 + confidence * 0.6,
+                            }} />
+
+                            {/* Multiplier — coloured by correctness */}
+                            <span style={{
+                              fontSize: 9, letterSpacing: "0.08em",
+                              color: isCorrect ? "#4ade80" : "#f87171",
+                              fontWeight: 600, minWidth: 28,
+                            }}>
+                              ×{mult.toFixed(2)}
+                            </span>
+
+                            {/* Confidence bar */}
+                            <div style={{
+                              flex: 1, height: 2, borderRadius: 1,
+                              background: "#1a1a2a", overflow: "hidden",
+                            }}>
+                              <div style={{
+                                width: `${confidence * 100}%`,
+                                height: "100%",
+                                background: isCorrect ? "#4ade80" : "#f87171",
+                                transition: "width 0.4s ease",
+                              }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
                 {/* Slot assignment row */}
                 <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap" }}>
                   {Object.keys(SLOT_LABELS).map(slot => {

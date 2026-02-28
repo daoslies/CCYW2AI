@@ -141,6 +141,14 @@ export function makeGS(upgradeLevels = {}, UPGRADES = [], config = {}) {
 function tickGibbet(gs, g, gibbetId, network, now, dt) {
   if (!network) return;
 
+  // --- Confidence multiplier logic ---
+  // Determine target color for movement/mining
+  const targetColorId = g.harvestTarget != null
+    ? gs.resources.find(r => r.id === g.harvestTarget)?.colorId
+    : gs.indicator?.id;
+  const confMult = confidenceMultiplier(network, targetColorId);
+  g.lastConfMult = confMult;
+
   // NN re-evaluation
   if (now - g.lastNNTick > NN_TICK_MS) {
     g.lastNNTick = now;
@@ -165,7 +173,7 @@ function tickGibbet(gs, g, gibbetId, network, now, dt) {
         if (res && res.state === "active") {
           // Mining speed per gibbet (can be upgraded)
           // Use a slower default mining rate and dt in ms
-          const mineRate = gs.mineSpeed ?? 0.001; // health per ms (slower)
+          const mineRate = (gs.mineSpeed ?? 0.001) * confMult; // health per ms (slower)
           const dtMs = Math.max(1, now - (g._lastHarvestTick || now));
           g._lastHarvestTick = now;
           res.health -= mineRate * dtMs;
@@ -174,7 +182,6 @@ function tickGibbet(gs, g, gibbetId, network, now, dt) {
             res.health = 0;
             // Collection logic (same as before, but now respawn at new location)
             res.state = "fading"; res.stateAt = now;
-            res.claimedBy = null;
             const col = COLORS.find(col => col.id === res.colorId);
             gs.sparkles.push(...makeSparkle(res.x, res.y, col.hex, now));
             const correct = isCorrectCollection(
@@ -213,7 +220,6 @@ function tickGibbet(gs, g, gibbetId, network, now, dt) {
             res.y = newPos.y;
             res.health = res.maxHealth;
             res.state = "active";
-            res.claimedBy = null;
             g.harvestTarget = null;
             g.target = null;
             g.harvestProgress = 0;
@@ -228,7 +234,7 @@ function tickGibbet(gs, g, gibbetId, network, now, dt) {
         const perpY = dx / d;
         const driftAmp = Math.min(d * 0.15, 12);
         const drift = driftAmp * Math.sin(now * 0.004 + g.x * 0.05);
-        const targetSpeed = gs.gibbetSpeed;
+        const targetSpeed = (gs.gibbetSpeed ?? 0.04) * confMult * (g.speedVariance ?? 1.0);
         const distFactor = Math.min(1, d / 60);
         const nearFactor = Math.min(1, d / COLLECT_DIST / 1.5);
         const speed = targetSpeed * 0.3 + targetSpeed * 0.7 * distFactor * nearFactor;
@@ -266,14 +272,12 @@ function evalNN(gs, g, gibbetId, network) {
   const idx = probs.indexOf(Math.max(...probs));
   if (idx === -1 || !COLORS[idx]) { g.target = null; return; }
   const colorId = COLORS[idx].id;
-  // Filter out resources claimed by other gibbets
-  const candidates = gs.resources.filter(r => r.colorId === colorId && r.state === "active" && (r.claimedBy === null || r.claimedBy === gibbetId));
+  // Remove claimedBy logic: allow any gibbet to target any resource
+  const candidates = gs.resources.filter(r => r.colorId === colorId && r.state === "active");
   if (!candidates.length) { g.target = null; return; }
   const nearest = candidates.reduce((best, r) =>
     Math.hypot(r.x - g.x, r.y - g.y) < Math.hypot(best.x - g.x, best.y - g.y) ? r : best);
-  nearest.claimedBy = gibbetId;
   g.target = { resourceId: nearest.id, x: nearest.x, y: nearest.y, colorId };
-
   g.sniffingUntil = Date.now() + 300 + Math.random() * 400;
 }
 
@@ -345,6 +349,7 @@ export function snapshot(gs) {
       harvestProgress: g.harvestProgress,
       poisonedUntil: g.poisonedUntil || 0,
       gainEvent: gainEvents.find(e => e.id === id) || null,
+      confMult: g.lastConfMult ?? 1.0,
     })),
     resources: gs.resources.map(r => ({
       ...r,
@@ -392,4 +397,26 @@ export function isCorrectCollection(colorId, indicatorId, config, weather) {
   // Normal: correct = matches indicator
   // Inverted: correct = does NOT match indicator
   return inverted ? !matchesIndicator : matchesIndicator;
+}
+
+/**
+ * Given a network and a target colour ID, returns a speed multiplier
+ * based on the network's softmax confidence for that class.
+ *
+ * Confidence of 0.33 (random chance) → 1.0x
+ * Confidence of 1.0 (certain) → 2.0x
+ * Confidence below 0.33 → below 1.0x (gibbet is actively confused)
+ *
+ * Formula: multiplier = confidence / 0.33
+ * Clamped to [0.4, 2.5] so gibbets never fully stop or become absurdly fast.
+ */
+export function confidenceMultiplier(network, colorId) {
+  if (!network) return 1.0;
+  const color = COLORS.find(c => c.id === colorId);
+  if (!color) return 1.0;
+  const probs = nnForward(network, color.oneHot);
+  const colorIndex = COLORS.findIndex(c => c.id === colorId);
+  const confidence = probs[colorIndex] ?? (1 / COLORS.length);
+  const raw = confidence / (1 / COLORS.length);
+  return Math.max(0.4, Math.min(2.5, raw));
 }

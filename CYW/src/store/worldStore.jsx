@@ -148,3 +148,5 @@ export function WorldProvider({ children }) {
 export function useWorld() {
   return useContext(WorldContext);
 }
+
+// Note: getNetwork is only available via useWorld(), not as a named export.
