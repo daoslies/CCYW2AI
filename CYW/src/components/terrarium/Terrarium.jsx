@@ -203,10 +203,11 @@ export default function Terrarium({
   }, [indicator, lastLoss, trainCount, onTrainingPanel]);
 
   // Upgrades sidebar UI (for right sidebar)
+  const [expandedUpgradeId, setExpandedUpgradeId] = useState(null);
   useEffect(() => {
     if (onUpgradesSidebar) {
       onUpgradesSidebar(
-        <div style={{ width: "100%", maxWidth: 320, display: "flex", flexDirection: "column", gap: 18 }}>
+        <div style={{ width: "100%", maxWidth: 320, display: "flex", flexDirection: "column", gap: 8 }}>
           <h3 style={{ color: "#b6e3ff", fontSize: 13, fontWeight: 600, margin: "24px 0 10px 0", letterSpacing: "0.08em" }}>Upgrades</h3>
           {UPGRADES.map(upg => {
             const lvl = effectiveUpgradeLevels[upg.id] || 0;
@@ -224,20 +225,23 @@ export default function Terrarium({
             return (
               <div key={upg.id}
                 style={{
-                  marginBottom: 8,
-                  padding: 8,
+                  marginBottom: 2,
+                  padding: 7,
                   borderRadius: 8,
                   background: canAfford && !maxed ? "#142c1a" : "#101624",
                   boxShadow: canAfford && !maxed ? "0 0 0 2px #22c55e88, 0 1px 4px #0002" : "0 1px 4px #0002",
                   cursor: maxed ? "not-allowed" : "pointer",
                   opacity: maxed ? 0.6 : 1,
                   transition: "background 0.15s, box-shadow 0.15s, transform 0.08s",
-                  border: canAfford && !maxed ? "2px solid #22c55e" : "2px solid transparent"
+                  border: canAfford && !maxed ? "2px solid #22c55e" : "2px solid transparent",
+                  overflow: 'hidden',
+                  minHeight: 28,
                 }}
                 onClick={() => !maxed && canAfford && handleUpgrade(upg.id)}
                 onMouseDown={e => e.currentTarget.style.transform = "scale(0.97)"}
                 onMouseUp={e => e.currentTarget.style.transform = "scale(1)"}
-                onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+                onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; setExpandedUpgradeId(null); }}
+                onMouseEnter={() => setExpandedUpgradeId(upg.id)}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ color: "#e0eaff", fontSize: 12, fontWeight: 500 }}>{upg.label}</span>
@@ -250,25 +254,35 @@ export default function Terrarium({
                     ))}
                   </div>
                 </div>
-                <div style={{ color: "#b6c2e0", fontSize: 11, margin: "4px 0 0" }}>
-                  {upg.description}
-                  {upg.id === "critBonus" && (
-                    <>
-                      <br />
-                      <span style={{ color: "#ffe066", fontWeight: 600 }}>
-                        Current crit chance: {((effectiveUpgradeLevels["critBonus"] || 0) * 10).toFixed(0)}%
-                      </span>
-                    </>
-                  )}
+                {/* Collapsible details */}
+                <div style={{
+                  maxHeight: expandedUpgradeId === upg.id ? 200 : 0,
+                  opacity: expandedUpgradeId === upg.id ? 1 : 0,
+                  transition: 'max-height 0.25s cubic-bezier(.4,2,.6,1), opacity 0.18s',
+                  overflow: 'hidden',
+                  pointerEvents: expandedUpgradeId === upg.id ? 'auto' : 'none',
+                  marginTop: expandedUpgradeId === upg.id ? 4 : 0,
+                }}>
+                  <div style={{ color: "#b6c2e0", fontSize: 11 }}>
+                    {upg.description}
+                    {upg.id === "critBonus" && (
+                      <>
+                        <br />
+                        <span style={{ color: "#ffe066", fontWeight: 600 }}>
+                          Current crit chance: {((effectiveUpgradeLevels["critBonus"] || 0) * 10).toFixed(0)}%
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  <div style={{ color: "#7dd3fc", fontSize: 10, marginTop: 2 }}>Level: {lvl}{upg.maxLevel ? `/${upg.maxLevel}` : ""}</div>
                 </div>
-                <div style={{ color: "#7dd3fc", fontSize: 10, marginTop: 2 }}>Level: {lvl}{upg.maxLevel ? `/${upg.maxLevel}` : ""}</div>
               </div>
             );
           })}
         </div>
       );
     }
-  }, [snap, effectiveUpgradeLevels, onUpgradesSidebar]);
+  }, [snap, effectiveUpgradeLevels, onUpgradesSidebar, expandedUpgradeId]);
 
   // Notify parent of upgrade level changes
   useEffect(() => {

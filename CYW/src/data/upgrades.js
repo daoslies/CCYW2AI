@@ -30,7 +30,7 @@ export const UPGRADES = [
     cost: (level) => ({ red: 3 * (level + 1), green: 0, blue: 0 }),
     maxLevel: 5,
     apply: (gs, level) => {
-      gs._critBonus = level * 10;
+      gs._criticalGather = level * 0.10;
     }
   },
   {

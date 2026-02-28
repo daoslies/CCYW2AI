@@ -92,12 +92,55 @@ export function makeSparkle(x, y, hex, now) {
 export function applyAllUpgrades(gs, upgradeLevels, UPGRADES) {
   gs._speedBonus = 0;
   gs._respawnBonus = 0;
+  gs._redGatherBonus = 0;
+  gs._greenGatherBonus = 0;
+  gs._blueGatherBonus = 0;
+  gs._resourceFieldBonus = 0;
+  gs._criticalGather = 0;
   for (const upg of UPGRADES) {
     const lvl = upgradeLevels[upg.id] || 0;
     if (lvl > 0) upg.apply(gs, lvl);
   }
   gs.gibbetSpeed = BASE_GIBBET_SPEED * (1 + (gs._speedBonus || 0));
   gs.resourceRespawnMs = 650 * (1 - (gs._respawnBonus || 0));
+
+  // If resourceFieldBonus changed, spawn only the new additional resources
+  if (gs._resourceFieldBonus !== undefined && gs.resources && gs.resources.length > 0) {
+    const baseCount = 1;
+    const bonus = gs._resourceFieldBonus || 0;
+    const expectedCount = COLORS.length * (baseCount + bonus);
+    if (gs.resources.length < expectedCount) {
+      // Calculate how many new resources to add per color
+      const countPerColor = baseCount + bonus;
+      const colorCounts = {};
+      for (const c of COLORS) colorCounts[c.id] = 0;
+      for (const r of gs.resources) colorCounts[r.colorId]++;
+      for (const c of COLORS) {
+        const toAdd = countPerColor - colorCounts[c.id];
+        for (let i = 0; i < toAdd; ++i) {
+          const newRes = spawnResource(c.id);
+          newRes.state = "spawning";
+          newRes.stateAt = Date.now();
+          gs.resources.push(newRes);
+        }
+      }
+    } else if (gs.resources.length > expectedCount) {
+      // If for some reason there are too many, trim extras (shouldn't happen in normal upgrade flow)
+      // Remove oldest resources of each color first
+      for (const c of COLORS) {
+        let extras = gs.resources.filter(r => r.colorId === c.id);
+        while (extras.length > countPerColor) {
+          const idx = gs.resources.findIndex(r => r.colorId === c.id);
+          if (idx !== -1) {
+            gs.resources.splice(idx, 1);
+            extras = gs.resources.filter(r => r.colorId === c.id);
+          } else {
+            break;
+          }
+        }
+      }
+    }
+  }
 }
 
 // GibbetState: per-gibbet state managed by engine

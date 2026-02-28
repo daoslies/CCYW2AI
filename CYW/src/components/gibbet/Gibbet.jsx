@@ -24,18 +24,36 @@ export default function Gibbet({ x, y, angle, state, poisoned, poisonAge, gainPo
         const dy = -28 - t * 22;
         // If crit, make popup larger, bolder, and with a glow
         const isCrit = popup.crit;
+        // For crits: use resource color for fill, but keep gold/yellow for stroke/glow
+        const critFill = isCrit ? (popup.hex || '#fff') : (popup.hex || '#fff');
+        const critStroke = isCrit ? "#ff9800" : "#222";
+        const critGlow = isCrit ? `drop-shadow(0 0 8px #fff700) drop-shadow(0 0 16px #ff9800)` : undefined;
         return (
           <g key={popup.id} style={{ opacity: fade, pointerEvents: "none" }}>
             <text x={0} y={dy} textAnchor="middle"
               fontSize={isCrit ? "28" : "18"}
               fontWeight={isCrit ? "900" : "bold"}
-              fill={isCrit ? "#fff700" : (popup.hex || '#fff')}
-              stroke={isCrit ? "#ff9800" : "#222"}
+              fill={critFill}
+              stroke={critStroke}
               strokeWidth={isCrit ? "2.2" : "0.8"}
               paintOrder="stroke"
-              style={isCrit ? { filter: "drop-shadow(0 0 8px #fff700) drop-shadow(0 0 16px #ff9800)" } : {}}>
+              style={isCrit ? { filter: critGlow } : {}}>
               {isCrit ? `CRIT +${popup.amount}` : `+${popup.amount}`}
             </text>
+            {/* For crits, add a colored outline or shadow in the resource color behind the text for extra clarity */}
+            {isCrit && (
+              <text x={0} y={dy} textAnchor="middle"
+                fontSize="28"
+                fontWeight="900"
+                fill="none"
+                stroke={popup.hex || '#fff'}
+                strokeWidth="5.5"
+                opacity="0.45"
+                style={{ filter: `blur(1.2px)` }}
+              >
+                {`CRIT +${popup.amount}`}
+              </text>
+            )}
           </g>
         );
       })}
