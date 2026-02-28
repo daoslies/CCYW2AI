@@ -5,7 +5,7 @@ import { RosterSection, RosterItem, StatusPip, ActionButton } from "./RosterSect
 import { R } from "../../styles/rosterTokens.js";
 import { NETWORK_CONFIG_T1 } from "../../data/networkConfig.js";
 import { COLORS } from "../../data/colors.js";
-import AccuracyRing from "./AccuracyRing.jsx";
+import PredictionRing from "./PredictionRing.jsx";
 import DraggableItem from "../dragdrop/DraggableItem.jsx";
 import Gibbet from "../gibbet/Gibbet.jsx";
 
@@ -16,7 +16,7 @@ function brainAccuracy(brain) {
 }
 
 export default function BrainsRoster({ onDragStart }) {
-  const { brains, addBrain, usedBrainIds, activeTrainerId, setActiveTrainerId } = useWorld();
+  const { brains, addBrain, usedBrainIds, activeTrainerId, setActiveTrainerId, getNetwork } = useWorld();
   const { setDraggingItem } = useDragStore();
 
   const handleDragStart = (brain) => {
@@ -64,7 +64,7 @@ export default function BrainsRoster({ onDragStart }) {
             </div>
             {/* Render rest of brain UI here, not draggable */}
             <RosterItem key={brain.id} dimmed={used && !isTraining}>
-              <AccuracyRing value={accuracy} color={R.accentBrain} size={28} />
+              <PredictionRing network={getNetwork(brain.id)} size={28} animTrigger={brain.trainCount} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
                   color: R.textPrimary,

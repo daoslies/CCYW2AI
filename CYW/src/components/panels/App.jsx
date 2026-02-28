@@ -19,6 +19,7 @@ import AccuracyRing from "../roster/AccuracyRing.jsx";
 import Gibbet from "../gibbet/Gibbet.jsx";
 import { CombinePanel } from "./RightPanel.jsx";
 import RightPanel from "./RightPanel.jsx";
+import PredictionRing from "../roster/PredictionRing.jsx";
 
 function safeNum(val, fallback = 0) {
   return typeof val === "number" && isFinite(val) ? val : fallback;
@@ -633,23 +634,33 @@ export default function App() {
                     {predictions && (
                       <div style={{ flex: 1 }}>
                         <p style={{ color: "#444", fontSize: 10, letterSpacing: "0.15em", textTransform: "uppercase", margin: "0 0 8px" }}>NN Predicts</p>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                          {COLORS.map(c => {
-                            const pred = predictions[c.id];
-                            const isRight = pred.id === c.id;
-                            return (
-                              <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                <span className="pred-dot" style={{ background: c.hex }} />
-                                <span style={{ color: "#555", fontSize: 11, width: 42 }}>{c.label}</span>
-                                <span style={{ color: "#333", fontSize: 11 }}>→</span>
-                                <span className="pred-dot" style={{ background: pred.hex }} />
-                                <span style={{ color: isRight ? "#22c55e" : "#666", fontSize: 11 }}>
-                                  {pred.label}
-                                  {isRight && <span style={{ marginLeft: 4, opacity: 0.6 }}>✓</span>}
-                                </span>
-                              </div>
-                            );
-                          })}
+                        {/* Ring and text breakdown side by side */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8 }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 5, justifyContent: "center" }}>
+                            {COLORS.map(c => {
+                              const pred = predictions[c.id];
+                              const isRight = pred.id === c.id;
+                              return (
+                                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 22 }}>
+                                  <span className="pred-dot" style={{ background: c.hex }} />
+                                  <span style={{ color: "#555", fontSize: 11, width: 42 }}>{c.label}</span>
+                                  <span style={{ color: "#333", fontSize: 11 }}>→</span>
+                                  <span className="pred-dot" style={{ background: pred.hex }} />
+                                  <span style={{ color: isRight ? "#22c55e" : "#666", fontSize: 11 }}>
+                                    {pred.label}
+                                    {isRight && <span style={{ marginLeft: 4, opacity: 0.6 }}>✓</span>}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div style={{ flexShrink: 0, display: "flex", alignItems: "center", height: "100%" }}>
+                            <PredictionRing
+                              network={trainerNetwork}
+                              size={52}
+                              animTrigger={trainCount}
+                            />
+                          </div>
                         </div>
                       </div>
                     )}
