@@ -11,10 +11,12 @@ This document tracks current issues, feature requests, and improvements for the 
 - ~~#8 — Performance/Memory Leak: Investigate before adding features. Suspected causes: requestAnimationFrame tick loop in Terrarium not cleaning up when gibbetEntries changes, and updateSimState triggering worldStore re-renders at 60fps. Audit these before animation system changes.~~ _(Completed: Animation loop refactored to use refs, effect dependencies minimized, updateSimState dirty-checked. No stutter observed after fix. Ongoing monitoring for memory leaks recommended.)_
 
 ### Do next — high value, relatively self-contained:
-- **#9 — Trainer Brain Sync**: Wire up store. Clicking a brain in BrainsRoster or a gibbet in GibbetRoster should call setActiveTrainerId(brain.id). One line per click handler. High gameplay value, minimal risk.
+- ~~#9 — Trainer Brain Sync: Wire up store. Clicking a brain in BrainsRoster or a gibbet in GibbetRoster should call setActiveTrainerId(brain.id). One line per click handler. High gameplay value, minimal risk.~~ _(Completed: Both rosters now set active trainer brain on click as required.)_
 - **#11 — Brain/Body/Gibbet Constraints**: Design and partial implementation exist. Finish greying out body icons in BodiesRoster and remove any remaining brain reuse guards from combine.
 - **#3 — Weather Terrarium & Drag-Select**: Drag-select is a one-liner in DraggableItem (call select(type, id) from startDrag). Weather terrarium needs further investigation.
 - **#10 — Icon Wiggle Feedback**: Add CSS animation to DraggableItem. Default: slow 3s gentle oscillation. Hover: faster, larger amplitude. Pure CSS.
+- **#14 — Decrease width of combine panel**: Make the combine panel narrower for a more compact UI.
+- **#15 — Control panel height fits content**: Don't have control panel take up full vertical length of screen; it should only extend up and down on y to the extent required for its components plus a little padding.
 
 ### Design work required before implementing:
 - **#2 — Body Types with Resource Multipliers**: Data design needed. Decide where multipliers live (GIBBET_BREEDS, body object, or gibbet engine). Multiplier must flow into tickGibbet's mining calculation.
@@ -52,8 +54,9 @@ This document tracks current issues, feature requests, and improvements for the 
    - ~~Investigate possible memory leaks or performance issues, as occasional animation stutters have been observed. May be due to heavy on-screen activity or lack of optimization.~~
    - _Fixed: Animation loop refactored to use refs, effect dependencies minimized, updateSimState dirty-checked. No stutter observed after fix. Ongoing monitoring for memory leaks recommended._
 
-9. **Trainer Brain Sync** _(2026-03-01 05:47 UTC)_
-   - Selecting a brain or gibbet should update the trainer to have that brain (or the brain attached to a gibbet) as the active brain in training.
+9. ~~Trainer Brain Sync~~ _(2026-03-01 05:47 UTC, completed 2026-03-01 19:40 UTC)_
+   - ~~Selecting a brain or gibbet should update the trainer to have that brain (or the brain attached to a gibbet) as the active brain in training.~~
+   - _Fixed: Both BrainsRoster and GibbetRoster now set active trainer brain on click as required._
 
 10. **Icon Wiggle Feedback** _(2026-03-01 05:47 UTC)_
    - Brain, body, and gibbet icons should wiggle slightly by default, and wiggle more when hovered, to encourage drag-and-drop interaction.
@@ -63,6 +66,15 @@ This document tracks current issues, feature requests, and improvements for the 
 
 12. **Left Panel Info Section** _(2026-03-01 05:47 UTC)_
    - Improve the left panel info section.
+
+13. **Unify Roster Icon Display** _(2026-03-01 19:50 UTC)_
+   - Roster icons have a slight separation: brain & body vs gibbet. The gibbet panel looks more like a button and can be clicked anywhere to drag. Update brain and body roster items to use the same button-like, draggable panel style for consistency.
+
+14. **Decrease width of combine panel** _(2026-03-01 19:55 UTC)_
+   - Make the combine panel narrower for a more compact UI.
+
+15. **Control panel height fits content** _(2026-03-01 19:55 UTC)_
+   - Don't have control panel take up full vertical length of screen; it should only extend up and down on y to the extent required for its components plus a little padding.
 
 ---
 

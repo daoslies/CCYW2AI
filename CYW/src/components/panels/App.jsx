@@ -492,7 +492,7 @@ export default function App() {
                 {/* Header */}
                 <div style={{ marginBottom: 32, textAlign: "center" }}>
                   <p style={{ color: "#444", fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", margin: "0 0 6px" }}>
-                    Gibbet brain X · Psionic training
+                    {trainerBrain?.name ? `${trainerBrain.name} · Psionic training` : `No brain selected · Psionic training`}
                     <br />
                     <span style={{ color: '#7dd3fc', fontWeight: 500 }}>
                       {(() => {

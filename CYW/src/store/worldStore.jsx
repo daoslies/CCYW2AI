@@ -96,12 +96,12 @@ export function WorldProvider({ children }) {
   const usedBodyIds = useMemo(() => new Set(gibbets.map(g => g.bodyId)), [gibbets]);
 
   const combineGibbet = useCallback((brainId, bodyId, name = "Gibbet") => {
-    if (usedBrainIds.has(brainId) || usedBodyIds.has(bodyId)) return null;
+    if (usedBodyIds.has(bodyId)) return null; // Only block reused bodies
     const body = bodies.find(b => b.id === bodyId);
     const gibbet = createGibbet(brainId, bodyId, name, body.color);
     setGibbets(prev => [...prev, gibbet]);
     return gibbet.id;
-  }, [usedBrainIds, usedBodyIds, bodies]);
+  }, [usedBodyIds, bodies]);
 
   const dissolveGibbet = useCallback((gibbetId) => {
     setGibbets(prev => prev.filter(g => g.id !== gibbetId));

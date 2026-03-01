@@ -52,7 +52,7 @@ export default function BrainsRoster({ onDragStart }) {
         const isSelected = selected?.type === "brain" && selected?.id === brain.id;
         return (
           <div key={brain.id} className={"roster-item" + (isSelected ? " selected" : "")}
-            onClick={() => select("brain", brain.id)}
+            onClick={() => { select("brain", brain.id); setActiveTrainerId(brain.id); }}
             style={{ cursor: "pointer", background: isSelected ? "#23234a" : undefined }}>
             {/* Brain icon only is draggable */}
             <div style={{ width: 32, height: 32, display: "inline-block", verticalAlign: "middle", position: "relative" }}>

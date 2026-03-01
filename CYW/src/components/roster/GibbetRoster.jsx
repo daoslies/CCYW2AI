@@ -13,7 +13,7 @@ import { useSelection } from "../../store/selectionStore";
 const SLOT_LABELS = { t1: "T1", t2: "T2" };
 
 export default function GibbetRoster() {
-  const { gibbets, brains, bodies, assignments, assignGibbet, unassignGibbet, dissolveGibbet, simStates, getNetwork } = useWorld();
+  const { gibbets, brains, bodies, assignments, assignGibbet, unassignGibbet, dissolveGibbet, simStates, getNetwork, setActiveTrainerId } = useWorld();
   const [confirmingDissolve, setConfirmingDissolve] = useState(null);
   const { selected, select } = useSelection();
 
@@ -57,7 +57,7 @@ export default function GibbetRoster() {
 
         return (
           <div key={gibbet.id} className={"roster-item" + (isSelected ? " selected" : "")}
-            onClick={() => select("gibbet", gibbet.id)}
+            onClick={() => { select("gibbet", gibbet.id); if (brain) setActiveTrainerId(brain.id); }}
             style={{ cursor: "pointer", background: isSelected ? "#23234a" : undefined }}>
             <DraggableItem
               payload={gibbet}
