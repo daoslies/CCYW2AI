@@ -36,11 +36,14 @@ export default function Terrarium({
   const { assignments, gibbets, brains, getNetwork, updateGibbetMeta, activeTrainerId, assignGibbet, unassignGibbet, simStates, updateSimState } = useWorld();
   // Defensive: assignments, gibbets, brains may be empty
   const gibbetIds = assignments?.[slot] || [];
-  const gibbetEntries = gibbetIds
+  const gibbetEntriesRef = useRef([]);
+  const prevSimStatesRef = useRef({});
+
+  // Update entries ref every render — no effect dependency needed
+  gibbetEntriesRef.current = gibbetIds
     .map(id => {
       const gibbet = gibbets.find(g => g.id === id);
-      const brain = gibbet && gibbet.brainId != null ? brains.find(b => b.id === gibbet.brainId) : null;
-      // Use getNetwork for correct network instance
+      const brain = gibbet?.brainId != null ? brains.find(b => b.id === gibbet.brainId) : null;
       const network = brain ? getNetwork(brain.id) : null;
       return gibbet && brain && network ? { id: gibbet.id, brain, network } : null;
     })
@@ -75,24 +78,50 @@ export default function Terrarium({
     }
   }, [snap.indicator, onIndicatorChange]);
 
-  // Only set up the interval once, and use refs for config/network
   useEffect(() => {
+    let frameId;
     let running = true;
+
     function tick() {
       if (!running) return;
-      // Pass correct network instance for each gibbet
-      gameTick(gsRef.current, gibbetEntries.map(e => ({ id: e.id, network: e.network })), UPGRADES, config);
-      setSnap(snapshot(gsRef.current));
-      // After snapshot, update simStates in world store
+
+      gameTick(
+        gsRef.current,
+        gibbetEntriesRef.current.map(e => ({ id: e.id, network: e.network })),
+        UPGRADES,
+        config
+      );
+
       const snapNow = snapshot(gsRef.current);
+      setSnap(snapNow);
+
+      // Only push to worldStore when gibbet state actually changes
       snapNow.gibbets?.forEach(gs => {
-        updateSimState(gs.id, { state: gs.state, poisonedUntil: gs.poisonedUntil, now: snapNow.now });
+        const prev = prevSimStatesRef.current[gs.id];
+        if (!prev || prev.state !== gs.state || prev.poisonedUntil !== gs.poisonedUntil) {
+          prevSimStatesRef.current[gs.id] = {
+            state: gs.state,
+            poisonedUntil: gs.poisonedUntil,
+            // do not store 'now' here
+          };
+          updateSimState(gs.id, {
+            state: gs.state,
+            poisonedUntil: gs.poisonedUntil,
+            now: snapNow.now, // consumers need current time, but we don't diff on it
+          });
+        }
       });
-      requestAnimationFrame(tick);
+
+      frameId = requestAnimationFrame(tick);
     }
-    requestAnimationFrame(tick);
-    return () => { running = false; };
-  }, [gibbetIds.join(), gibbets.length, config, gibbetEntries]); // rerun if assignments or gibbets change
+
+    frameId = requestAnimationFrame(tick);
+
+    return () => {
+      running = false;
+      cancelAnimationFrame(frameId);
+    };
+  }, [config]); // Only restart on config change
 
   function handleReset() {
     gsRef.current = makeGS(upgradeLevels, UPGRADES, config);
@@ -338,7 +367,7 @@ export default function Terrarium({
   const selectedGibbetId = null; // TODO: wire up selection logic from context/store if needed
 
   // Defensive: always render container, even if no gibbets assigned
-  const hasGibbets = gibbetEntries.length > 0;
+  const hasGibbets = gibbetEntriesRef.current.length > 0;
 
   // Use drag state to highlight dropzone when dragging a gibbet
   const { dragging } = useDrag();
@@ -372,7 +401,7 @@ export default function Terrarium({
       )}
 
       {/* Transparent draggable hit areas — positioned over simulation gibbets */}
-      {hasGibbets && gibbetEntries.map(({ id }) => {
+      {hasGibbets && gibbetEntriesRef.current.map(({ id }) => {
         const gibbet = gibbets.find(g => g.id === id);
         const gibbetSnap = snap.gibbets?.find(gs => gs.id === id);
         if (!gibbet || !gibbetSnap) return null;

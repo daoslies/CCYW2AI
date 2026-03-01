@@ -8,7 +8,7 @@ This document tracks current issues, feature requests, and improvements for the 
 
 ### Fix first — these block other work or cause visible regressions:
 - ~~#1 — Gibbet Selection Visual Bug: Regression from the transparent hit area overlay system. Likely caused by DraggableItem wrapper or hit area div showing a default background. Fix: set background: "transparent" on all overlay elements and check for browser default styling. Should take under an hour and should be fixed before more terrarium work.~~ _(Completed: replaced with animated circling orbs, masking for 3D effect, bug eliminated.)_
-- **#8 — Performance/Memory Leak**: Investigate before adding features. Suspected causes: requestAnimationFrame tick loop in Terrarium not cleaning up when gibbetEntries changes, and updateSimState triggering worldStore re-renders at 60fps. Audit these before animation system changes.
+- ~~#8 — Performance/Memory Leak: Investigate before adding features. Suspected causes: requestAnimationFrame tick loop in Terrarium not cleaning up when gibbetEntries changes, and updateSimState triggering worldStore re-renders at 60fps. Audit these before animation system changes.~~ _(Completed: Animation loop refactored to use refs, effect dependencies minimized, updateSimState dirty-checked. No stutter observed after fix. Ongoing monitoring for memory leaks recommended.)_
 
 ### Do next — high value, relatively self-contained:
 - **#9 — Trainer Brain Sync**: Wire up store. Clicking a brain in BrainsRoster or a gibbet in GibbetRoster should call setActiveTrainerId(brain.id). One line per click handler. High gameplay value, minimal risk.
@@ -48,8 +48,9 @@ This document tracks current issues, feature requests, and improvements for the 
 
 7. *(Intentionally left blank for future use)* _(2026-03-01 05:47 UTC)_
 
-8. **Performance/Memory Leak Investigation** _(2026-03-01 05:47 UTC)_
-   - Investigate possible memory leaks or performance issues, as occasional animation stutters have been observed. May be due to heavy on-screen activity or lack of optimization.
+8. ~~Performance/Memory Leak Investigation~~ _(2026-03-01 05:47 UTC, completed 2026-03-01 19:30 UTC)_
+   - ~~Investigate possible memory leaks or performance issues, as occasional animation stutters have been observed. May be due to heavy on-screen activity or lack of optimization.~~
+   - _Fixed: Animation loop refactored to use refs, effect dependencies minimized, updateSimState dirty-checked. No stutter observed after fix. Ongoing monitoring for memory leaks recommended._
 
 9. **Trainer Brain Sync** _(2026-03-01 05:47 UTC)_
    - Selecting a brain or gibbet should update the trainer to have that brain (or the brain attached to a gibbet) as the active brain in training.
@@ -66,3 +67,5 @@ This document tracks current issues, feature requests, and improvements for the 
 ---
 
 *Add new issues below as needed. Mark completed items with ~~strikethrough~~ and move them to a "Done" section if desired.*
+
+
