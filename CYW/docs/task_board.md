@@ -7,7 +7,7 @@ This document tracks current issues, feature requests, and improvements for the 
 ## Priority Assessment (2026-03-01 17:50 UTC)
 
 ### Fix first — these block other work or cause visible regressions:
-- **#1 — Gibbet Selection Visual Bug**: Regression from the transparent hit area overlay system. Likely caused by DraggableItem wrapper or hit area div showing a default background. Fix: set background: "transparent" on all overlay elements and check for browser default styling. Should take under an hour and should be fixed before more terrarium work.
+- ~~#1 — Gibbet Selection Visual Bug: Regression from the transparent hit area overlay system. Likely caused by DraggableItem wrapper or hit area div showing a default background. Fix: set background: "transparent" on all overlay elements and check for browser default styling. Should take under an hour and should be fixed before more terrarium work.~~ _(Completed: replaced with animated circling orbs, masking for 3D effect, bug eliminated.)_
 - **#8 — Performance/Memory Leak**: Investigate before adding features. Suspected causes: requestAnimationFrame tick loop in Terrarium not cleaning up when gibbetEntries changes, and updateSimState triggering worldStore re-renders at 60fps. Audit these before animation system changes.
 
 ### Do next — high value, relatively self-contained:
@@ -27,8 +27,9 @@ This document tracks current issues, feature requests, and improvements for the 
 
 ## Issues & Feature Requests
 
-1. **Gibbet Selection Visual Bug** _(2026-03-01 05:47 UTC)_
-   - On selecting a gibbet currently assigned to a terrarium, that gibbet is replaced/covered by a grey circle.
+1. ~~Gibbet Selection Visual Bug~~ _(2026-03-01 05:47 UTC, completed 2026-03-01 18:10 UTC)_
+   - ~~On selecting a gibbet currently assigned to a terrarium, that gibbet is replaced/covered by a grey circle.~~
+   - _Fixed: Selection now uses animated circling orbs with SVG masking for 3D effect. No visual artifacts remain._
 
 2. **Body Types with Resource Multipliers** _(2026-03-01 05:47 UTC)_
    - Implement different body types that players can buy, each with unique multipliers for collecting different colored resources.

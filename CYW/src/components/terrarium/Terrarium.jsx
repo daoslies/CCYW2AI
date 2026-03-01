@@ -354,15 +354,8 @@ export default function Terrarium({
         width: "100%",
         maxWidth: 540,
         borderRadius: 20,
-        border: selectedGibbetId === gibbetIds[0] ? "3px solid #7dd3fc" : "2px solid rgba(140,200,255,0.13)",
-        boxShadow: [
-          selectedGibbetId === gibbetIds[0] ? "0 0 0 4px #7dd3fc44" : "0 0 0 1px rgba(100,150,255,0.06)",
-          "inset 0 0 30px rgba(0,20,60,0.4)",
-          "inset 0 -10px 28px rgba(0,0,0,0.55)",
-          "inset 2px 0 12px rgba(0,0,0,0.3)",
-          "inset -2px 0 12px rgba(0,0,0,0.3)",
-          "0 28px 80px rgba(0,0,0,0.75)"
-        ].join(", "),
+        border: "none", // Remove selection border
+        boxShadow: "none", // Remove selection boxShadow
         overflow: "hidden",
         background: "#0a0c16",
         position: "relative",
@@ -401,11 +394,11 @@ export default function Terrarium({
               height: 44,
               zIndex: 10,
               background: isSelected ? "transparent" : "transparent", // Remove grey circle for test
-              border: isSelected ? "2px solid #7dd3fc" : "none",
+              border: "none", // Remove selection border
               borderRadius: "50%",
               opacity: isDraggingThis ? 0 : 1,
               pointerEvents: isDraggingThis ? "none" : "auto",
-              boxShadow: isSelected ? "0 0 0 4px #7dd3fc44" : undefined,
+              boxShadow: "none", // Remove selection boxShadow
               cursor: "pointer"
             }}
             onClick={() => select("gibbet", id)}
@@ -422,6 +415,56 @@ export default function Terrarium({
                 onMouseEnter={e => e.currentTarget.style.boxShadow = "0 0 0 2px rgba(125,211,252,0.3)"}
                 onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}
               />
+              {isSelected && (
+                <svg
+                  width={44}
+                  height={44}
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: 0,
+                    pointerEvents: "none",
+                    zIndex: 11,
+                  }}
+                >
+                  <defs>
+                    <mask id={`gibbet-orb-occlude-mask-${id}`}>
+                      {/* White ellipse: visible area (gibbet body) */}
+                      <ellipse cx={22} cy={22} rx={15} ry={14} fill="white" />
+                    </mask>
+                  </defs>
+                  {/* Orbs behind (angle > π/2 or < -π/2) - masked */}
+                  {[0, 1, 2].map(i => {
+                    const angle = (now * 0.0018) + (i * (2 * Math.PI / 3));
+                    if (Math.cos(angle) < 0) {
+                      const ox = 22 + Math.cos(angle) * 20;
+                      const oy = 22 + Math.sin(angle) * 10;
+                      return (
+                        <g key={"back-"+i} mask={`url(#gibbet-orb-occlude-mask-${id})`}>
+                          <circle cx={ox} cy={oy} r={2.2} fill="#7dd3fc" opacity={0.7} style={{ filter: "blur(1px)" }} />
+                          <circle cx={ox} cy={oy} r={1} fill="white" opacity={0.5} />
+                        </g>
+                      );
+                    }
+                    return null;
+                  })}
+                  {/* Orbs in front (angle between -π/2 and π/2) - unmasked */}
+                  {[0, 1, 2].map(i => {
+                    const angle = (now * 0.0018) + (i * (2 * Math.PI / 3));
+                    if (Math.cos(angle) >= 0) {
+                      const ox = 22 + Math.cos(angle) * 20;
+                      const oy = 22 + Math.sin(angle) * 10;
+                      return (
+                        <g key={"front-"+i}>
+                          <circle cx={ox} cy={oy} r={2.2} fill="#7dd3fc" opacity={0.7} style={{ filter: "blur(1px)" }} />
+                          <circle cx={ox} cy={oy} r={1} fill="white" opacity={0.5} />
+                        </g>
+                      );
+                    }
+                    return null;
+                  })}
+                </svg>
+              )}
             </DraggableItem>
           </div>
         );
