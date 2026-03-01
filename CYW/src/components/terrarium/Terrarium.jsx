@@ -400,7 +400,7 @@ export default function Terrarium({
               width: 44,
               height: 44,
               zIndex: 10,
-              background: isSelected ? "#23234a" : "transparent",
+              background: isSelected ? "transparent" : "transparent", // Remove grey circle for test
               border: isSelected ? "2px solid #7dd3fc" : "none",
               borderRadius: "50%",
               opacity: isDraggingThis ? 0 : 1,

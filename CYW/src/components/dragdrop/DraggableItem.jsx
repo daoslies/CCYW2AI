@@ -41,6 +41,7 @@ export default function DraggableItem({ type, id, payload, children, onDragStart
         cursor: "grab",
         userSelect: "none",
         touchAction: "none",
+        background: "transparent", // Ensure no default background leaks through
       }}
     >
       {children}
