@@ -8,6 +8,7 @@ import { COLORS } from "../../data/colors.js";
 import PredictionRing from "./PredictionRing.jsx";
 import DraggableItem from "../dragdrop/DraggableItem.jsx";
 import Gibbet from "../gibbet/Gibbet.jsx";
+import { useSelection } from "../../store/selectionStore";
 
 function brainAccuracy(brain) {
   // Dummy: returns 0-1 based on trainCount (replace with real logic)
@@ -18,6 +19,7 @@ function brainAccuracy(brain) {
 export default function BrainsRoster({ onDragStart }) {
   const { brains, addBrain, usedBrainIds, activeTrainerId, setActiveTrainerId, getNetwork } = useWorld();
   const { setDraggingItem } = useDragStore();
+  const { selected, select } = useSelection();
 
   const handleDragStart = (brain) => {
     setDraggingItem({ type: "brain", payload: brain });
@@ -47,8 +49,11 @@ export default function BrainsRoster({ onDragStart }) {
         const used = usedBrainIds.has(brain.id);
         const isTraining = activeTrainerId === brain.id;
         const accuracy = brainAccuracy(brain);
+        const isSelected = selected?.type === "brain" && selected?.id === brain.id;
         return (
-          <div key={brain.id} className="roster-item">
+          <div key={brain.id} className={"roster-item" + (isSelected ? " selected" : "")}
+            onClick={() => select("brain", brain.id)}
+            style={{ cursor: "pointer", background: isSelected ? "#23234a" : undefined }}>
             {/* Brain icon only is draggable */}
             <div style={{ width: 32, height: 32, display: "inline-block", verticalAlign: "middle", position: "relative" }}>
               <DraggableItem

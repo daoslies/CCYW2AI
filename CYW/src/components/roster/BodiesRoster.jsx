@@ -5,9 +5,11 @@ import { R } from "../../styles/rosterTokens.js";
 import Gibbet from "../gibbet/Gibbet.jsx";
 import DraggableItem from "../dragdrop/DraggableItem.jsx";
 import { COLORS } from "../../data/colors.js";
+import { useSelection } from "../../store/selectionStore";
 
 export default function BodiesRoster({ onDragStart, setDraggingBody }) {
   const { bodies, addBody, usedBodyIds } = useWorld();
+  const { selected, select } = useSelection();
 
   const handleDragStart = (body) => {
     if (setDraggingBody) setDraggingBody(body);
@@ -35,8 +37,14 @@ export default function BodiesRoster({ onDragStart, setDraggingBody }) {
       )}
       {bodies.map((body) => {
         const used = usedBodyIds.has(body.id);
+        const isSelected = selected?.type === "body" && selected?.id === body.id;
         return (
-          <div key={body.id} className="roster-item">
+          <div
+            key={body.id}
+            className={"roster-item" + (isSelected ? " selected" : "")}
+            onClick={() => select("body", body.id)}
+            style={{ cursor: "pointer", background: isSelected ? "#23234a" : undefined }}
+          >
             <div style={{ width: 32, height: 32, display: "inline-block", verticalAlign: "middle", position: "relative" }}>
               <DraggableItem
                 type="body"

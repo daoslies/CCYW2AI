@@ -1,6 +1,5 @@
 import React from "react";
-import GibbetBioPanel from "./App.jsx"; // If GibbetBioPanel is a subcomponent, import from App.jsx
-import NetworkViz from "../shared/NetworkViz.jsx";
+import SelectedEntityPanel from "../left/SelectedEntityPanel.jsx";
 import { useWorld } from "../../store/worldStore.jsx";
 
 export default function LeftPanel({
@@ -31,18 +30,7 @@ export default function LeftPanel({
       maxHeight: "100vh",
       overflowY: "auto"
     }}>
-      <GibbetBioPanel />
-      <div style={{ width: "100%", maxWidth: 400, margin: "0 auto 18px auto" }}>
-        {trainerBrain && (
-          <NetworkViz
-            brain={trainerBrain}
-            network={trainerNetwork}
-            inputValue={view === "trainer" ? indicator.oneHot : indicator.oneHot}
-            animTrigger={networkUpdateTick}
-            style={{ width: "100%", height: "auto", maxWidth: 400, aspectRatio: "1.06" }}
-          />
-        )}
-      </div>
+      <SelectedEntityPanel />
       {terrariumResourceCounters}
     </div>
   );

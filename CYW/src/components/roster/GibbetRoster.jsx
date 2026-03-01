@@ -8,12 +8,14 @@ import { COLORS } from "../../data/colors.js";
 import Gibbet from "../gibbet/Gibbet.jsx";
 import { confidenceMultiplier } from '../../engine/terrariumEngine.js';
 import { nnForward } from '../../engine/nn.js';
+import { useSelection } from "../../store/selectionStore";
 
 const SLOT_LABELS = { t1: "T1", t2: "T2" };
 
 export default function GibbetRoster() {
   const { gibbets, brains, bodies, assignments, assignGibbet, unassignGibbet, dissolveGibbet, simStates, getNetwork } = useWorld();
   const [confirmingDissolve, setConfirmingDissolve] = useState(null);
+  const { selected, select } = useSelection();
 
   function getSlotsForGibbet(gibbetId) {
     return Object.entries(assignments)
@@ -35,6 +37,7 @@ export default function GibbetRoster() {
         const simState = simStates[gibbet.id] || { state: gibbet.state || "idle", poisonedUntil: gibbet.poisoned ? Date.now() + 10000 : 0, now: Date.now() };
         const isConfirming = confirmingDissolve === gibbet.id;
         const isAssigned = assignedSlots.length > 0;
+        const isSelected = selected?.type === "gibbet" && selected?.id === gibbet.id;
 
         // Confidence/speed bars for all resource colors
         let confMults = [];
@@ -53,7 +56,9 @@ export default function GibbetRoster() {
         }
 
         return (
-          <div key={gibbet.id} className="roster-item">
+          <div key={gibbet.id} className={"roster-item" + (isSelected ? " selected" : "")}
+            onClick={() => select("gibbet", gibbet.id)}
+            style={{ cursor: "pointer", background: isSelected ? "#23234a" : undefined }}>
             <DraggableItem
               payload={gibbet}
               type="gibbet"

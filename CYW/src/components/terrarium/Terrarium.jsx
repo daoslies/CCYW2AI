@@ -20,6 +20,7 @@ import { useDrag } from "../../store/dragStore.jsx";
 import Gibbet from "../gibbet/Gibbet.jsx";
 import DropZone from "../dragdrop/DropZone.jsx";
 import DraggableItem from "../dragdrop/DraggableItem.jsx";
+import { useSelection } from "../../store/selectionStore";
 
 export default function Terrarium({
   slot = "t1",
@@ -344,6 +345,9 @@ export default function Terrarium({
   const isGibbetDragging = dragging && dragging.type === "gibbet";
   const draggingGibbetIds = isGibbetDragging ? [dragging.id] : [];
 
+  // Move useSelection to the top level to ensure consistent hook order
+  const { selected, select } = useSelection();
+
   return (
     <div
       style={{
@@ -383,6 +387,8 @@ export default function Terrarium({
         const leftPct = (gibbetSnap.x / 480) * 100;
         const topPct = (gibbetSnap.y / 270) * 100;
         const isDraggingThis = draggingGibbetIds.includes(id);
+        // Selection logic (now from top-level hook)
+        const isSelected = selected?.type === "gibbet" && selected?.id === id;
         return (
           <div
             key={id}
@@ -394,10 +400,15 @@ export default function Terrarium({
               width: 44,
               height: 44,
               zIndex: 10,
-              background: "transparent",
+              background: isSelected ? "#23234a" : "transparent",
+              border: isSelected ? "2px solid #7dd3fc" : "none",
+              borderRadius: "50%",
               opacity: isDraggingThis ? 0 : 1,
-              pointerEvents: isDraggingThis ? "none" : "auto"
+              pointerEvents: isDraggingThis ? "none" : "auto",
+              boxShadow: isSelected ? "0 0 0 4px #7dd3fc44" : undefined,
+              cursor: "pointer"
             }}
+            onClick={() => select("gibbet", id)}
           >
             <DraggableItem type="gibbet" id={id} payload={{ ...gibbet }}>
               <div

@@ -2,6 +2,7 @@ import { COLORS } from "../../data/colors.js";
 import { TW, TH, GROUND_Y, GRASS, PEBBLES, DUST, isCorrectCollection } from "../../engine/terrariumEngine";
 import { useRef, useEffect, useState } from "react";
 import { useWorld } from "../../store/worldStore.jsx";
+import { useSelection } from "../../store/selectionStore";
 import Gibbet from "../gibbet/Gibbet.jsx";
 import Resource from "./Resource";
 import Sparkle from "./Sparkle";
@@ -12,6 +13,7 @@ import DraggableItem from "../dragdrop/DraggableItem.jsx";
 export function TerrariumScene({ snap, draggingIds = [], renderGibbet, ...rest }) {
   const { now, gibbets, resources, sparkles, indicator, config, weather } = snap;
   const { gibbets: rosterGibbets, bodies } = useWorld();
+  const { selected } = useSelection(); // <-- Always at top level
 
   // Floating resource gain popups per gibbet
   const [gainPopupsMap, setGainPopupsMap] = useState({});
@@ -147,18 +149,22 @@ export function TerrariumScene({ snap, draggingIds = [], renderGibbet, ...rest }
         // Find roster gibbet and body for color
         const rosterGibbet = rosterGibbets.find(rg => rg.id === g.id);
         const body = rosterGibbet ? bodies.find(b => b.id === rosterGibbet.bodyId) : null;
+        // Selection highlight: orbiting glow if selected
+        const isSelected = selected?.type === "gibbet" && selected?.id === g.id;
         return (
-          <Gibbet
-            key={g.id}
-            x={g.x}
-            y={g.y}
-            angle={g.angle}
-            state={g.state}
-            poisoned={g.poisonedUntil && now < g.poisonedUntil}
-            poisonAge={g.poisonedUntil ? Math.max(0, 1 - (now - (g.poisonedUntil - 700)) / 700) : 0}
-            gainPopups={gainPopupsMap[g.id] || []}
-            color={body?.color || rosterGibbet?.color || "#7dd3fc"}
-          />
+          <g key={g.id} style={{ pointerEvents: "auto" }}>
+            {/* Selection glow removed as per user request */}
+            <Gibbet
+              x={g.x}
+              y={g.y}
+              angle={g.angle}
+              state={g.state}
+              poisoned={g.poisonedUntil && now < g.poisonedUntil}
+              poisonAge={g.poisonedUntil ? Math.max(0, 1 - (now - (g.poisonedUntil - 700)) / 700) : 0}
+              gainPopups={gainPopupsMap[g.id] || []}
+              color={body?.color || rosterGibbet?.color || "#7dd3fc"}
+            />
+          </g>
         );
       })}
       <rect x={0} y={0} width={TW} height={TH} fill="url(#gVignette)" />

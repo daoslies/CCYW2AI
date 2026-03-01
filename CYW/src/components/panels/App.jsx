@@ -20,6 +20,7 @@ import Gibbet from "../gibbet/Gibbet.jsx";
 import { CombinePanel } from "./RightPanel.jsx";
 import RightPanel from "./RightPanel.jsx";
 import PredictionRing from "../roster/PredictionRing.jsx";
+import SelectedEntityPanel from "../left/SelectedEntityPanel.jsx";
 
 function safeNum(val, fallback = 0) {
   return typeof val === "number" && isFinite(val) ? val : fallback;
@@ -382,7 +383,7 @@ export default function App() {
           maxHeight: `${100 / UI_ZOOM}vh`,
           overflowY: "auto"
         }}>
-          <GibbetBioPanel />
+          <SelectedEntityPanel />
           <div style={{ width: "100%", maxWidth: 400, margin: "0 auto 18px auto" }}>
             {trainerBrain && (
               <NetworkViz
