@@ -4,6 +4,8 @@ import { useWorld } from "../../store/worldStore";
 import PredictionRing from "../roster/PredictionRing.jsx";
 import GibbetVisual from "../gibbet/GibbetVisual.jsx";
 import Gibbet from "../gibbet/Gibbet.jsx";
+import { BRAIN_TYPES } from "../../data/brainTypes.js";
+import { BODY_TYPES } from "../../data/bodyTypes.js";
 
 const TABS = [
   { id: "live",  label: "Live",  color: "#4ade80" },
@@ -189,9 +191,51 @@ function EntityHeader({ selected, brain, body, gibbet, simState, assignedSlots, 
 }
 
 function GibbetLiveTab({ gibbet, simState, network }) {
-  // TODO: Fill in with live stats, confidence bars, etc.
-  return <div style={{ color: "#4ade80" }}>Live info for {gibbet.name}</div>;
+  // Show brain/body type info and compatibility insight
+  const { brains, bodies } = useWorld();
+  const brain = brains.find(b => b.id === gibbet.brainId);
+  const body = bodies.find(b => b.id === gibbet.bodyId);
+  const brainType = brain ? BRAIN_TYPES[brain.typeId] || BRAIN_TYPES["standard"] : null;
+  const bodyType = body ? BODY_TYPES.find(bd => bd.id === body.typeId) || BODY_TYPES[0] : null;
+
+  // Simple compatibility logic: e.g., weather-aware brains are best with inverter bodies
+  let compatibility = "Normal";
+  let compatColor = "#aaa";
+  if (brainType && bodyType) {
+    if (brainType.weatherAware && bodyType.id === "inverter") {
+      compatibility = "Synergy: Weather brain + Inverter body";
+      compatColor = "#38bdf8";
+    } else if (brainType.id === "standard" && bodyType.id !== "balanced") {
+      compatibility = "Suboptimal: Standard brain with specialist body";
+      compatColor = "#f87171";
+    } else {
+      compatibility = "Normal";
+      compatColor = "#aaa";
+    }
+  }
+
+  return (
+    <div style={{ color: "#4ade80", display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {brainType && (
+          <span title={brainType.label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 18 }}>{brainType.icon === "weather" ? "🧠" : "🧠"}</span>
+            <span style={{ color: brainType.accentColor, fontWeight: 600 }}>{brainType.label}</span>
+          </span>
+        )}
+        {bodyType && (
+          <span title={bodyType.label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 18 }}>🫀</span>
+            <span style={{ color: bodyType.accentColor, fontWeight: 600 }}>{bodyType.label}</span>
+          </span>
+        )}
+      </div>
+      <div style={{ color: compatColor, fontSize: 12, fontWeight: 500 }}>{compatibility}</div>
+      {/* ...existing or future live stats... */}
+    </div>
+  );
 }
+
 function GibbetBrainTab({ brain, network }) {
   // TODO: Fill in with brain stats, prediction ring, etc.
   return <div style={{ color: "#7dd3fc" }}>Brain info for {brain?.name}</div>;

@@ -84,4 +84,12 @@ export const UPGRADES = [
       // Unlock logic handled in App.jsx; this is a marker upgrade.
     }
   },
+  {
+    id: "weatherBrain",
+    label: "Weather Brain",
+    description: "Unlocks 4-input weather-aware brain architecture.",
+    cost: lvl =>  ({ red: 0, green: 0, blue: 0}),   // set to 0 for dev ({ red: 8, green: 8, blue: 8 }),
+    maxLevel: 1,
+    apply: (gs, lvl) => { gs.weatherBrainUnlocked = lvl >= 1; }
+  },
 ];

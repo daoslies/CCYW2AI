@@ -65,3 +65,10 @@ This isn't decoration — it's the interpretive frame that makes the mechanics f
 Good places to start
 Read terrariumEngine.js top to bottom — it's well-commented and contains the core game logic in one place. Then read worldStore.jsx to understand how entities are created and related. Then open the app and train a brain from scratch, combine it with a body, assign it to a terrarium, and watch it work. The mechanic is clearest when you experience it directly.
 Any questions, the courier knows where to find us.
+
+
+
+
+
+
+### Note - Remember to update the main public facing readme.md at the root of this project to match any changes made to this file, whenever changes are made to this file. ### note after someone did this - we do not need to include this note in the public facing version as that version is public facing.

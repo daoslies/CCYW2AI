@@ -9,14 +9,20 @@ This document tracks current issues, feature requests, and improvements for the 
 **Goal:** Implement the new Brain Types (weather-aware, unlockable, input vector logic) and Body Types (resource multipliers, unlocks, visuals, UI, multiplier logic) as per the approved architectural plan. Ensure all supporting UI/UX, engine, and documentation updates are included.
 
 ### Sprint Tasks
-- [ ] Create `src/data/brainTypes.js` and `src/data/bodyTypes.js` with type definitions, icons, and unlock logic.
-- [ ] Update `worldStore.jsx` to support brain/body types, unlocks, and correct creation logic.
-- [ ] Integrate weather state into terrarium UI and brain input vector logic.
-- [ ] Implement resource multiplier logic for body types in the engine.
-- [ ] Update BrainsRoster and BodiesRoster to display types, unlocks, icons, and compact multiplier bar.
-- [ ] Add compatibility/insight display for brain/body combos in the inspector.
-- [ ] Add/Update documentation: codebase_structure.md, onboarding.md, and inline code comments.
-- [ ] Review and update task board as work progresses.
+- [x] Create `src/data/brainTypes.js` and `src/data/bodyTypes.js` with type definitions, icons, and unlock logic.
+- [x] Update `worldStore.jsx` to support brain/body types, unlocks, and correct creation logic.
+- [x] Integrate weather state into terrarium UI and brain input vector logic.
+- [x] Implement resource multiplier logic for body types in the engine.
+- [x] Update BrainsRoster and BodiesRoster to display types, unlocks, icons, and compact multiplier bar.
+- [x] Add compatibility/insight display for brain/body combos in the inspector.
+- [x] Add/Update documentation: codebase_structure.md, onboarding.md, and inline code comments.
+- [x] Review and update task board as work progresses.
+- [x] **Visual polish:** Apply the new shared SlidePanel, BrainTypeCard, BodyTypeCard, and visual design system to the type selection panels, as per the design team's plan. Ensure all right-side panels (combine, brain type, body type) use the same deep background, corner ticks, scanline texture, and slide animation for a unified, instrument-like feel. **(Completed 2026-03-03 03:14 UTC)**
+    - [x] Buy/selection panels now use shared SlidePanel with zoom-compensated height, correct scroll, and margin auto centering. No more clipping at top or bottom at any UI scale.
+    - [x] Code duplication removed; all buy panels use the shared SlidePanel for layout and scroll.
+    - [x] Task and solution documented in codebase_structure.md.
+
+_Note: Unlock logic, type selection UI, and compatibility display are now implemented in the rosters and inspector. Visual pass is the next step._
 
 ### Architectural Notes
 - See architectural approval and plan (2026-03-02) for data structures, UI/UX, and engine integration details.
@@ -24,10 +30,10 @@ This document tracks current issues, feature requests, and improvements for the 
 - Maintain backwards compatibility for existing brains/bodies.
 
 ### Documentation & Readiness Checklist
-- [ ] All new/changed files and modules documented in codebase_structure.md
-- [ ] Onboarding.md updated with new gameplay and system concepts
-- [ ] Inline code comments for all new/complex logic
-- [ ] Task board updated as tasks are completed
+- [x] All new/changed files and modules documented in codebase_structure.md
+- [x] Onboarding.md updated with new gameplay and system concepts
+- [x] Inline code comments for all new/complex logic
+- [x] Task board updated as tasks are completed
 
 ---
 

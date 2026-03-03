@@ -2,6 +2,8 @@
 // Pure, parameterised game logic engine for all terrarium variants
 import { COLORS } from "../data/colors";
 import { nnForward, nnTrainStep } from "./nn";
+import { BRAIN_TYPES } from "../data/brainTypes";
+import { BODY_TYPES } from "../data/bodyTypes";
 
 export const TW = 480, TH = 270;
 export const GROUND_Y = 205;
@@ -150,7 +152,7 @@ function makeGibbetState(meta = {}) {
     target: null, harvestTarget: null, harvestStarted: null,
     sniffingUntil: null, lastNNTick: 0, poisonedUntil: null,
     harvestProgress: 0,
-    ...meta,
+    meta,
   };
 }
 
@@ -195,7 +197,9 @@ function tickGibbet(gs, g, gibbetId, network, now, dt) {
   // NN re-evaluation
   if (now - g.lastNNTick > NN_TICK_MS) {
     g.lastNNTick = now;
-    evalNN(gs, g, gibbetId, network);
+    // Use brainTypeId from meta if available
+    const brainTypeId = g.meta?.brainTypeId || "standard";
+    evalNN(gs, g, gibbetId, network, brainTypeId);
   }
   // Move gibbet and handle collection
   if (g.target) {
@@ -235,8 +239,11 @@ function tickGibbet(gs, g, gibbetId, network, now, dt) {
               if (g.target.colorId === "red")   bonus = gs._redGatherBonus || 0;
               if (g.target.colorId === "green") bonus = gs._greenGatherBonus || 0;
               if (g.target.colorId === "blue")  bonus = gs._blueGatherBonus || 0;
+              // Use bodyTypeId from meta if available
+              const bodyTypeId = g.meta?.bodyTypeId || "balanced";
+              const multiplier = getCollectionMultiplier(bodyTypeId, g.target.colorId, gs.indicator.id);
+              let amount = (1 + bonus) * multiplier;
               let crit = false;
-              let amount = 1 + bonus;
               if (gs._criticalGather && Math.random() < gs._criticalGather) {
                 crit = true;
                 amount = Math.round(amount * 1.5);
@@ -306,8 +313,8 @@ function tickGibbet(gs, g, gibbetId, network, now, dt) {
 }
 
 // Updated evalNN: per-gibbet
-function evalNN(gs, g, gibbetId, network) {
-  const inputVec = buildInputVec(gs);
+function evalNN(gs, g, gibbetId, network, brainTypeId = "standard") {
+  const inputVec = buildInputVec(gs, brainTypeId);
   const probs = nnForward(network, inputVec);
   if (!Array.isArray(probs) || probs.length !== 3 || probs.some(v => !isFinite(v))) {
     g.target = null; return;
@@ -412,13 +419,24 @@ export function snapshot(gs) {
   return snap;
 }
 
-// Build input vector for the network given current gs state
-export function buildInputVec(gs) {
-  if (gs.config.hasWeather) {
-    // 4-element: one-hot(indicator) + weather scalar
+// Build input vector for the network given current gs state and brain type
+export function buildInputVec(gs, brainTypeId = "standard") {
+  const brainType = BRAIN_TYPES[brainTypeId] || BRAIN_TYPES["standard"];
+  if (brainType.weatherAware) {
     return [...gs.indicator.oneHot, gs.weather];
   }
   return gs.indicator.oneHot;
+}
+
+// Get collection multiplier for a body type
+export function getCollectionMultiplier(bodyTypeId, collectedColorId, indicatorColorId) {
+  const bodyType = BODY_TYPES.find(b => b.id === bodyTypeId);
+  if (!bodyType) return 1.0;
+  const isCorrect = collectedColorId === indicatorColorId;
+  if (!isCorrect && bodyType.multipliers.wrong != null) {
+    return bodyType.multipliers.wrong;
+  }
+  return bodyType.multipliers[collectedColorId] ?? 1.0;
 }
 
 // Helper to get resource rate per second for each color

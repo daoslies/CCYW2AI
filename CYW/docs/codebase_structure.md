@@ -1,20 +1,24 @@
 # Codebase Structure and Key Functions
 
-_Last updated: 2026-02-27_
+_Last updated: 2026-03-03 03:14 UTC_
 
 This document provides a concise mapping of the main files and their key functions/components, to help understand the codebase structure and imports during refactoring. All filepaths are relative to `/src/`.
 
 ---
 
-## Upcoming: Brain Types & Body Types (Sprint 2026-03-03)
+## Brain Types & Body Types (Sprint 2026-03-03)
 
 - /src/data/brainTypes.js: BRAIN_TYPES array, type definitions, icons, unlock logic for brains (weather-aware, etc).
 - /src/data/bodyTypes.js: BODY_TYPES array, type definitions, icons, unlock logic for bodies (resource multipliers, etc).
-- /src/store/worldStore.jsx: Will be updated to support brain/body types, unlocks, and correct creation logic.
-- /src/components/roster/BrainsRoster.jsx: Will display brain types, unlocks, icons, and badges.
-- /src/components/roster/BodiesRoster.jsx: Will display body types, unlocks, icons, and compact multiplier bar.
-- /src/components/panels/RightPanel.jsx: Will integrate new type displays and combine logic.
-- /src/engine/terrariumEngine.js: Will integrate weather state and resource multiplier logic.
+- /src/store/worldStore.jsx: Supports brain/body types, unlocks, and correct creation logic.
+- /src/components/roster/BrainsRoster.jsx: Displays brain types, unlocks, icons, badges, and type selection panel (uses shared SlidePanel).
+- /src/components/roster/BodiesRoster.jsx: Displays body types, unlocks, icons, compact multiplier bar, and type selection panel (uses shared SlidePanel).
+- /src/components/panels/RightPanel.jsx: Integrates new type displays and combine logic.
+- /src/components/shared/SlidePanel.jsx: Shared sliding panel shell for right-side panels (combine, brain type, body type). Handles zoom-compensated height, margin auto centering, and correct scroll.
+- /src/components/roster/BrainTypeCard.jsx: Visual card for brain type selection panel, uses MiniNetworkDiagram, CornerTick.
+- /src/components/roster/BodyTypeCard.jsx: Visual card for body type selection panel, uses MultiplierDisplay, CornerTick.
+- /src/components/roster/MiniNetworkDiagram.jsx: Miniature neural network diagram for brain type cards.
+- /src/components/roster/MultiplierDisplay.jsx: Renders large multiplier bars for body type cards.
 
 ---
 
@@ -27,12 +31,18 @@ This document provides a concise mapping of the main files and their key functio
 ## shared/
 - /src/components/shared/NetworkViz.jsx: NetworkViz (main export), visualizes neural network, imports COLORS, NETWORK_LAYERS, useWorld.
 - /src/components/shared/TrainingButtons.jsx: TrainingButtons (main export), renders color buttons, imports COLORS, useWorld.
+- /src/components/shared/SlidePanel.jsx: SlidePanel (main export), shared sliding panel shell for right-side panels. Now handles zoom-compensated height and margin auto centering for correct scroll and visual polish (2026-03-03).
+- /src/components/shared/CornerTick.jsx: CornerTick (main export), used for visual accent on cards.
 
 ## roster/
 - /src/components/roster/AccuracyRing.jsx: AccuracyRing (main export), SVG ring for accuracy, imports Gibbet, useWorld, R, COLORS.
-- /src/components/roster/BodiesRoster.jsx: BodiesRoster (main export), imports useWorld, RosterSection, RosterItem, StatusPip, ActionButton, R, Gibbet, DraggableItem, COLORS.
-- /src/components/roster/BrainsRoster.jsx: BrainsRoster (main export), imports useWorld, RosterSection, RosterItem, StatusPip, ActionButton, R, NETWORK_CONFIG_T1, COLORS, AccuracyRing, DraggableItem, Gibbet.
+- /src/components/roster/BodiesRoster.jsx: BodiesRoster (main export), imports useWorld, RosterSection, RosterItem, StatusPip, ActionButton, R, Gibbet, DraggableItem, COLORS. Uses shared SlidePanel for buy/type selection panel.
+- /src/components/roster/BodyTypeCard.jsx: BodyTypeCard (main export), visual card for body type selection panel, uses MultiplierDisplay, CornerTick.
+- /src/components/roster/BrainsRoster.jsx: BrainsRoster (main export), imports useWorld, RosterSection, RosterItem, StatusPip, ActionButton, R, NETWORK_CONFIG_T1, COLORS, AccuracyRing, DraggableItem, Gibbet. Uses shared SlidePanel for buy/type selection panel.
+- /src/components/roster/BrainTypeCard.jsx: BrainTypeCard (main export), visual card for brain type selection panel, uses MiniNetworkDiagram, CornerTick.
 - /src/components/roster/GibbetRoster.jsx: GibbetRoster (main export), imports useWorld, RosterSection, RosterItem, ActionButton, R, Gibbet, DraggableItem, COLORS.
+- /src/components/roster/MiniNetworkDiagram.jsx: MiniNetworkDiagram (main export), renders a miniature neural network diagram for brain type cards.
+- /src/components/roster/MultiplierDisplay.jsx: MultiplierDisplay (main export), renders large multiplier bars for body type cards.
 - /src/components/roster/RosterSection.jsx: RosterSection (main export), layout for roster sections, imports R, COLORS.
 
 ## dragdrop/
@@ -71,3 +81,8 @@ This document provides a concise mapping of the main files and their key functio
 
 ---
 This mapping should help track down import issues and clarify which files provide which symbols and how many folders deep they are. Update as needed during refactoring.
+
+**2026-03-03 03:14 UTC:**
+- Visual polish and scroll/zoom bugfix for buy/selection panels complete. All buy panels now use shared SlidePanel with zoom-compensated height and margin auto centering. No more clipping at top or bottom at any UI scale. Code duplication removed.
+
+### Note remember to update this file when adding, creating or modifying files and their components.
