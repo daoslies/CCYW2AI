@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useRef, useCallback, useMemo } fro
 import { makeNetwork } from "../engine/nn";
 import { NETWORK_CONFIG_T1 } from "../data/networkConfig";
 import { GIBBET_BREEDS } from "../data/gibbet_breeds";
+import { BRAIN_TYPES } from "../data/brainTypes";
+import { BODY_TYPES } from "../data/bodyTypes";
 
 // Utility to generate random body color with more variety
 function randomBodyColor() {
@@ -23,24 +25,27 @@ function randomBodyColor() {
   return palettes[Math.floor(Math.random()*palettes.length)]();
 }
 
-function createBrain(config = NETWORK_CONFIG_T1, name = "Brain") {
+function createBrain(typeId = "standard", name = "Brain") {
+  const brainType = BRAIN_TYPES[typeId] || BRAIN_TYPES["standard"];
   return {
     id: Math.floor(Math.random() * 1e8),
     type: "brain",
+    typeId,
     name,
-    config,
+    config: brainType.config,
     trainCount: 0,
     lossHistory: [],
     createdAt: Date.now(),
   };
 }
 
-function createBody(breedId, name = "Body") {
+function createBody(typeId = "balanced", name) {
+  const bodyType = BODY_TYPES.find(b => b.id === typeId) || BODY_TYPES[0];
   return {
     id: Math.floor(Math.random() * 1e8),
     type: "body",
-    breedId,
-    name,
+    typeId,
+    name: name ?? bodyType.label,
     color: randomBodyColor(),
     purchasedAt: Date.now(),
   };
@@ -62,7 +67,7 @@ export const WorldContext = createContext(null);
 
 export function WorldProvider({ children }) {
   // Brains
-  const [brains, setBrains] = useState([createBrain(NETWORK_CONFIG_T1, "Brain I")]);
+  const [brains, setBrains] = useState([createBrain("standard", "Brain I")]);
   const networkMapRef = useRef(new Map()); // brainId → live network
   const getNetwork = useCallback((brainId) => {
     if (!networkMapRef.current.has(brainId)) {
@@ -72,8 +77,8 @@ export function WorldProvider({ children }) {
     return networkMapRef.current.get(brainId);
   }, [brains]);
 
-  const addBrain = useCallback((config, name) => {
-    const brain = createBrain(config, name);
+  const addBrain = useCallback((typeId = "standard", name) => {
+    const brain = createBrain(typeId, name);
     setBrains(prev => [...prev, brain]);
     return brain.id;
   }, []);
@@ -83,9 +88,9 @@ export function WorldProvider({ children }) {
   }, []);
 
   // Bodies
-  const [bodies, setBodies] = useState([createBody("classic", "Basic Body")]);
-  const addBody = useCallback((breedId, name) => {
-    const body = createBody(breedId, name);
+  const [bodies, setBodies] = useState([createBody("balanced", "Basic Body")]);
+  const addBody = useCallback((typeId = "balanced", name) => {
+    const body = createBody(typeId, name);
     setBodies(prev => [...prev, body]);
     return body.id;
   }, []);
@@ -131,6 +136,9 @@ export function WorldProvider({ children }) {
     setSimStates(prev => ({ ...prev, [gibbetId]: stateSlice }));
   }, []);
 
+  // Weather Brain Unlocked
+  const [weatherBrainUnlocked, setWeatherBrainUnlocked] = useState(false);
+
   return (
     <WorldContext.Provider value={{
       brains, addBrain, getNetwork, updateBrainMeta, usedBrainIds,
@@ -139,6 +147,7 @@ export function WorldProvider({ children }) {
       assignments, assignGibbet, unassignGibbet,
       activeTrainerId, setActiveTrainerId,
       simStates, updateSimState,
+      weatherBrainUnlocked, setWeatherBrainUnlocked,
     }}>
       {children}
     </WorldContext.Provider>
