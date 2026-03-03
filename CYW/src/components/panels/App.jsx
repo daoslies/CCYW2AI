@@ -167,7 +167,6 @@ export default function App() {
   const [combineBrain, setCombineBrain] = useState(null);
   const [combineBody, setCombineBody] = useState(null);
 
-  // --- Buy menu panel injection for brains/bodies (upgrades sidebar pattern) ---
   const [brainsBuyMenuPanel, setBrainsBuyMenuPanel] = useState(null);
   const [bodiesBuyMenuPanel, setBodiesBuyMenuPanel] = useState(null);
 
@@ -788,6 +787,16 @@ export default function App() {
             {/* Buy menus and GibbetRoster now injected via RightPanel */}
           </div>
         )}
+        <BrainsRoster
+          setDraggingBrain={setDraggingBrain}
+          onResourceDeduct={purchaseHandler}
+          injectPanel={setBrainsBuyMenuPanel}
+        />
+        <BodiesRoster
+          setDraggingBody={setDraggingBody}
+          onResourceDeduct={purchaseHandler}
+          injectPanel={setBodiesBuyMenuPanel}
+        />
       </div>
     </DragProvider>
   );

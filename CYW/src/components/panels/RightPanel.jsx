@@ -1,4 +1,4 @@
-import React from "react";
+import { React, useState } from "react";
 import BrainsRoster from "../roster/BrainsRoster.jsx";
 import BodiesRoster from "../roster/BodiesRoster.jsx";
 import GibbetRoster from "../roster/GibbetRoster.jsx";
@@ -18,13 +18,18 @@ export default function RightPanel({
   onDropBody,
   onCombine,
   onCancel,
+  draggingBrain,
+  draggingBody,
   brainsBuyMenuPanel,
   bodiesBuyMenuPanel,
 }) {
+
   const { assignments, unassignGibbet } = useWorld();
   const { dragging } = useDragStore(); // was draggingItem
-  const draggingBrain = dragging?.type === "brain" ? dragging.payload : null;
-  const draggingBody = dragging?.type === "body" ? dragging.payload : null;
+
+  const draggingBrainItem = dragging?.type === "brain" ? dragging.payload : null;
+  const draggingBodyItem = dragging?.type === "body" ? dragging.payload : null;
+
   return (
     <>
       <div style={{
@@ -103,15 +108,15 @@ export default function RightPanel({
       </div>
       {/* Remove CombinePanel from the scrollable content and render it as a fixed overlay */}
       <CombinePanel
-        draggingBrain={draggingBrain}
-        draggingBody={draggingBody}
+        draggingBrain={draggingBrainItem}
+        draggingBody={draggingBodyItem}
         combineBrain={combineBrain}
         combineBody={combineBody}
         onDropBrain={onDropBrain}
         onDropBody={onDropBody}
         onCombine={onCombine}
         onCancel={onCancel}
-        isActive={!!draggingBrain || !!draggingBody || !!combineBrain || !!combineBody}
+        isActive={!!draggingBrainItem || !!draggingBodyItem || !!combineBrain || !!combineBody}
       />
       <DragLayer renderItem={({ type, payload }) => {
         if (type === "brain") return (
