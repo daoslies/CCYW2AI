@@ -92,4 +92,73 @@ export const UPGRADES = [
     maxLevel: 1,
     apply: (gs, lvl) => { gs.weatherBrainUnlocked = lvl >= 1; }
   },
+  {
+    id: "unlockRedBody",
+    label: "Unlock Sanguine Body",
+    description: "Unlocks the red-specialist body type (Sanguine).",
+    cost: lvl => ({ red: 8, green: 0, blue: 0 }),
+    maxLevel: 1,
+    apply: (gs, lvl) => {
+      if (lvl >= 1) {
+        const type = gs.bodyTypes?.find(b => b.id === "red-specialist");
+        if (type) type.unlocked = true;
+        // fallback for direct mutation
+        if (Array.isArray(gs.bodies)) {
+          const idx = gs.bodies.findIndex(b => b.typeId === "red-specialist");
+          if (idx !== -1) gs.bodies[idx].unlocked = true;
+        }
+      }
+    }
+  },
+  {
+    id: "unlockGreenBody",
+    label: "Unlock Verdant Body",
+    description: "Unlocks the green-specialist body type (Verdant).",
+    cost: lvl => ({ red: 0, green: 8, blue: 0 }),
+    maxLevel: 1,
+    apply: (gs, lvl) => {
+      if (lvl >= 1) {
+        const type = gs.bodyTypes?.find(b => b.id === "green-specialist");
+        if (type) type.unlocked = true;
+        if (Array.isArray(gs.bodies)) {
+          const idx = gs.bodies.findIndex(b => b.typeId === "green-specialist");
+          if (idx !== -1) gs.bodies[idx].unlocked = true;
+        }
+      }
+    }
+  },
+  {
+    id: "unlockBlueBody",
+    label: "Unlock Cerulean Body",
+    description: "Unlocks the blue-specialist body type (Cerulean).",
+    cost: lvl => ({ red: 0, green: 0, blue: 8 }),
+    maxLevel: 1,
+    apply: (gs, lvl) => {
+      if (lvl >= 1) {
+        const type = gs.bodyTypes?.find(b => b.id === "blue-specialist");
+        if (type) type.unlocked = true;
+        if (Array.isArray(gs.bodies)) {
+          const idx = gs.bodies.findIndex(b => b.typeId === "blue-specialist");
+          if (idx !== -1) gs.bodies[idx].unlocked = true;
+        }
+      }
+    }
+  },
+  {
+    id: "unlockInverterBody",
+    label: "Unlock Contrary Body",
+    description: "Unlocks the inverter body type (Contrary).",
+    cost: lvl => ({ red: 4, green: 4, blue: 4 }),
+    maxLevel: 1,
+    apply: (gs, lvl) => {
+      if (lvl >= 1) {
+        const type = gs.bodyTypes?.find(b => b.id === "inverter");
+        if (type) type.unlocked = true;
+        if (Array.isArray(gs.bodies)) {
+          const idx = gs.bodies.findIndex(b => b.typeId === "inverter");
+          if (idx !== -1) gs.bodies[idx].unlocked = true;
+        }
+      }
+    }
+  },
 ];

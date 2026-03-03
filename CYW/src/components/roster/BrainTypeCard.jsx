@@ -7,6 +7,8 @@ import { CornerTick } from "../shared/CornerTick.jsx";
 export function BrainTypeCard({ brainType, selected, onSelect }) {
   const isLocked = !brainType.unlocked;
   const isSelected = selected?.id === brainType.id;
+  // For now, cost is hardcoded in worldStore.jsx (1 red for brain)
+  const cost = brainType.cost || { red: 1, green: 0, blue: 0 };
   return (
     <button
       onClick={() => !isLocked && onSelect(brainType)}
@@ -80,6 +82,13 @@ export function BrainTypeCard({ brainType, selected, onSelect }) {
             width={72}
             height={28}
           />
+        </div>
+        {/* Cost */}
+        <div style={{ display: "flex", gap: 8, marginTop: 6, fontSize: 11, color: isLocked ? "#555" : "#7dd3fc", fontWeight: 500 }}>
+          <span>Cost:</span>
+          {cost.red > 0 && <span style={{ color: "#f87171" }}>{cost.red}🟥</span>}
+          {cost.green > 0 && <span style={{ color: "#4ade80" }}>{cost.green}🟩</span>}
+          {cost.blue > 0 && <span style={{ color: "#7dd3fc" }}>{cost.blue}🟦</span>}
         </div>
         {/* Description */}
         <p style={{

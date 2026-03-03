@@ -14,7 +14,7 @@ export const BODY_TYPES = [
     label: "Sanguine",
     description: "Exceptional red affinity. Struggles with other colours.",
     multipliers: { red: 4.0, green: 0.2, blue: 0.2 },
-    cost: { red: 12, green: 0, blue: 0 },
+    cost: { red: 0, green: 0, blue: 0 },
     unlocked: false,
     accentColor: "#f87171",
     visual: "specialist",

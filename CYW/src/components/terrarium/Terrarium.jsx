@@ -30,10 +30,11 @@ export default function Terrarium({
   onTrainingPanel,
   onUpgradesSidebar,
   onUpgradeLevelsChange,
-  parentUpgradeLevels
+  parentUpgradeLevels,
+  onPurchaseHandler
 }) {
   // UseWorld instead of useGibbets
-  const { assignments, gibbets, brains, getNetwork, updateGibbetMeta, activeTrainerId, assignGibbet, unassignGibbet, simStates, updateSimState } = useWorld();
+  const { assignments, gibbets, brains, getNetwork, updateGibbetMeta, activeTrainerId, assignGibbet, unassignGibbet, simStates, updateSimState, setWeatherBrainUnlocked, unlockBodyType } = useWorld();
   // Defensive: assignments, gibbets, brains may be empty
   const gibbetIds = assignments?.[slot] || [];
   const gibbetEntriesRef = useRef([]);
@@ -145,6 +146,22 @@ export default function Terrarium({
     // Removed: New random indicator (indicator should only change in gameTick)
     setSnap(snapshot(gs));
   }
+
+  function handlePurchase(cost) {
+    const gs = gsRef.current;
+    for (const col of COLORS) {
+      if ((cost[col.id] || 0) > (gs.collections[col.id] || 0)) return false; // can't afford
+    }
+    for (const col of COLORS) {
+      gs.collections[col.id] -= (cost[col.id] || 0);
+    }
+    setSnap(snapshot(gs));
+    return true;
+  }
+
+  useEffect(() => {
+    if (onPurchaseHandler) onPurchaseHandler(handlePurchase);
+  }, [onPurchaseHandler]);
 
   // Resource counters UI (for left sidebar)
   useEffect(() => {
@@ -347,6 +364,13 @@ export default function Terrarium({
     setUpgradeLevels(newLevels);
     applyAllUpgrades(gs, newLevels, UPGRADES);
     setSnap(snapshot(gs));
+    // After applying upgrades, update store unlocks
+    if (upgId === "weatherBrain") {
+      setWeatherBrainUnlocked(true); // worldStore setter
+    }
+    if (upgId === "bodyTypeUnlock") {
+      unlockBodyType(unlockedBodyTypeId); // worldStore setter
+    }
   }
 
   // Bodies array and roster UI

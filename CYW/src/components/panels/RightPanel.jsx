@@ -18,6 +18,8 @@ export default function RightPanel({
   onDropBody,
   onCombine,
   onCancel,
+  brainsBuyMenuPanel,
+  bodiesBuyMenuPanel,
 }) {
   const { assignments, unassignGibbet } = useWorld();
   const { dragging } = useDragStore(); // was draggingItem
@@ -92,8 +94,8 @@ export default function RightPanel({
           )}
           {rightTab === "gibbets" && (
             <div style={{ padding: "0 12px 32px", display: "flex", flexDirection: "column", gap: 12 }}>
-              <BrainsRoster />
-              <BodiesRoster />
+              {brainsBuyMenuPanel}
+              {bodiesBuyMenuPanel}
               <GibbetRoster />
             </div>
           )}

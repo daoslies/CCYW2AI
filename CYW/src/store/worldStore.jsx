@@ -77,7 +77,11 @@ export function WorldProvider({ children }) {
     return networkMapRef.current.get(brainId);
   }, [brains]);
 
-  const addBrain = useCallback((typeId = "standard", name) => {
+  // Modified addBrain to use purchase handler from engine
+  const addBrain = useCallback((typeId = "standard", name, onResourceDeduct) => {
+    const brainType = BRAIN_TYPES[typeId] || BRAIN_TYPES["standard"];
+    const cost = brainType.cost || { red: 1, green: 0, blue: 0 };
+    if (onResourceDeduct && !onResourceDeduct(cost)) return null;
     const brain = createBrain(typeId, name);
     setBrains(prev => [...prev, brain]);
     return brain.id;
@@ -89,7 +93,12 @@ export function WorldProvider({ children }) {
 
   // Bodies
   const [bodies, setBodies] = useState([createBody("balanced", "Basic Body")]);
-  const addBody = useCallback((typeId = "balanced", name) => {
+
+  // Modified addBody to use purchase handler from engine
+  const addBody = useCallback((typeId = "balanced", name, onResourceDeduct) => {
+    const bodyType = BODY_TYPES.find(b => b.id === typeId) || BODY_TYPES[0];
+    const cost = bodyType.cost || { red: 0, green: 1, blue: 0 };
+    if (onResourceDeduct && !onResourceDeduct(cost)) return null;
     const body = createBody(typeId, name);
     setBodies(prev => [...prev, body]);
     return body.id;
@@ -136,8 +145,12 @@ export function WorldProvider({ children }) {
     setSimStates(prev => ({ ...prev, [gibbetId]: stateSlice }));
   }, []);
 
-  // Weather Brain Unlocked
+  // Unlock state for upgrades
   const [weatherBrainUnlocked, setWeatherBrainUnlocked] = useState(false);
+  const [unlockedBodyTypes, setUnlockedBodyTypes] = useState(["balanced"]);
+  const unlockBodyType = useCallback((typeId) => {
+    setUnlockedBodyTypes(prev => prev.includes(typeId) ? prev : [...prev, typeId]);
+  }, []);
 
   return (
     <WorldContext.Provider value={{
@@ -148,6 +161,7 @@ export function WorldProvider({ children }) {
       activeTrainerId, setActiveTrainerId,
       simStates, updateSimState,
       weatherBrainUnlocked, setWeatherBrainUnlocked,
+      unlockedBodyTypes, unlockBodyType,
     }}>
       {children}
     </WorldContext.Provider>

@@ -1,6 +1,6 @@
 # Codebase Structure and Key Functions
 
-_Last updated: 2026-03-03 03:14 UTC_
+_Last updated: 2026-03-03 03:30 UTC_
 
 This document provides a concise mapping of the main files and their key functions/components, to help understand the codebase structure and imports during refactoring. All filepaths are relative to `/src/`.
 
@@ -11,9 +11,9 @@ This document provides a concise mapping of the main files and their key functio
 - /src/data/brainTypes.js: BRAIN_TYPES array, type definitions, icons, unlock logic for brains (weather-aware, etc).
 - /src/data/bodyTypes.js: BODY_TYPES array, type definitions, icons, unlock logic for bodies (resource multipliers, etc).
 - /src/store/worldStore.jsx: Supports brain/body types, unlocks, and correct creation logic.
-- /src/components/roster/BrainsRoster.jsx: Displays brain types, unlocks, icons, badges, and type selection panel (uses shared SlidePanel).
-- /src/components/roster/BodiesRoster.jsx: Displays body types, unlocks, icons, compact multiplier bar, and type selection panel (uses shared SlidePanel).
-- /src/components/panels/RightPanel.jsx: Integrates new type displays and combine logic.
+- /src/components/roster/BrainsRoster.jsx: Displays brain types, unlocks, icons, badges, and type selection panel (uses shared SlidePanel). Now supports an injectPanel prop. On resource or unlock state change, injects its panel into App.jsx, which passes it to RightPanel for rendering. No longer rendered directly in App.jsx or RightPanel.jsx.
+- /src/components/roster/BodiesRoster.jsx: Displays body types, unlocks, icons, compact multiplier bar, and type selection panel (uses shared SlidePanel). Now supports an injectPanel prop. On resource or unlock state change, injects its panel into App.jsx, which passes it to RightPanel for rendering. No longer rendered directly in App.jsx or RightPanel.jsx.
+- /src/components/panels/RightPanel.jsx: Integrates new type displays and combine logic. Receives brainsBuyMenuPanel and bodiesBuyMenuPanel as props from App.jsx and renders them in the "gibbets" tab, along with GibbetRoster. No longer instantiates BrainsRoster or BodiesRoster directly. All right sidebar content is now injected from App.jsx.
 - /src/components/shared/SlidePanel.jsx: Shared sliding panel shell for right-side panels (combine, brain type, body type). Handles zoom-compensated height, margin auto centering, and correct scroll.
 - /src/components/roster/BrainTypeCard.jsx: Visual card for brain type selection panel, uses MiniNetworkDiagram, CornerTick.
 - /src/components/roster/BodyTypeCard.jsx: Visual card for body type selection panel, uses MultiplierDisplay, CornerTick.
@@ -23,10 +23,10 @@ This document provides a concise mapping of the main files and their key functio
 ---
 
 ## panels/
-- /src/components/panels/App.jsx: CombinePanel, main app logic, imports NetworkViz, TrainingButtons, Terrarium, DropZone, DragLayer, BrainsRoster, BodiesRoster, GibbetRoster, RosterSection, AccuracyRing, Gibbet.
-- /src/components/panels/LeftPanel.jsx: LeftPanel (main export), imports GibbetBioPanel (from App.jsx), NetworkViz, useWorld.
+- /src/components/panels/App.jsx: Main app logic. Now injects brainsBuyMenuPanel and bodiesBuyMenuPanel (from BrainsRoster/BodiesRoster) and passes them as props to RightPanel. No longer renders BrainsRoster or BodiesRoster directly; all right sidebar content is managed by RightPanel. Handles resource deduction and unlock state via canonical engine state and injected panel pattern.
+- /src/components/panels/LeftPanel.jsx: LeftPanel (main export), imports NetworkViz, useWorld, and renders resource counters and network visualization at full width.
 - /src/components/panels/CenterPanel.jsx: CenterPanel (main export), imports useWorld.
-- /src/components/panels/RightPanel.jsx: RightPanel (main export), imports BrainsRoster, BodiesRoster, GibbetRoster, useWorld.
+- /src/components/panels/RightPanel.jsx: RightPanel (main export), receives brainsBuyMenuPanel and bodiesBuyMenuPanel as props from App.jsx and renders them in the "gibbets" tab, along with GibbetRoster. No longer instantiates BrainsRoster or BodiesRoster directly. All right sidebar content is now injected from App.jsx.
 
 ## shared/
 - /src/components/shared/NetworkViz.jsx: NetworkViz (main export), visualizes neural network, imports COLORS, NETWORK_LAYERS, useWorld.
@@ -36,9 +36,9 @@ This document provides a concise mapping of the main files and their key functio
 
 ## roster/
 - /src/components/roster/AccuracyRing.jsx: AccuracyRing (main export), SVG ring for accuracy, imports Gibbet, useWorld, R, COLORS.
-- /src/components/roster/BodiesRoster.jsx: BodiesRoster (main export), imports useWorld, RosterSection, RosterItem, StatusPip, ActionButton, R, Gibbet, DraggableItem, COLORS. Uses shared SlidePanel for buy/type selection panel.
+- /src/components/roster/BodiesRoster.jsx: BodiesRoster (main export), imports useWorld, RosterSection, RosterItem, StatusPip, ActionButton, R, Gibbet, DraggableItem, COLORS. Uses shared SlidePanel for buy/type selection panel. Now supports an injectPanel prop. On resource or unlock state change, injects its panel into App.jsx, which passes it to RightPanel for rendering. No longer rendered directly in App.jsx or RightPanel.jsx.
 - /src/components/roster/BodyTypeCard.jsx: BodyTypeCard (main export), visual card for body type selection panel, uses MultiplierDisplay, CornerTick.
-- /src/components/roster/BrainsRoster.jsx: BrainsRoster (main export), imports useWorld, RosterSection, RosterItem, StatusPip, ActionButton, R, NETWORK_CONFIG_T1, COLORS, AccuracyRing, DraggableItem, Gibbet. Uses shared SlidePanel for buy/type selection panel.
+- /src/components/roster/BrainsRoster.jsx: BrainsRoster (main export), imports useWorld, RosterSection, RosterItem, StatusPip, ActionButton, R, NETWORK_CONFIG_T1, COLORS, AccuracyRing, DraggableItem, Gibbet. Uses shared SlidePanel for buy/type selection panel. Now supports an injectPanel prop. On resource or unlock state change, injects its panel into App.jsx, which passes it to RightPanel for rendering. No longer rendered directly in App.jsx or RightPanel.jsx.
 - /src/components/roster/BrainTypeCard.jsx: BrainTypeCard (main export), visual card for brain type selection panel, uses MiniNetworkDiagram, CornerTick.
 - /src/components/roster/GibbetRoster.jsx: GibbetRoster (main export), imports useWorld, RosterSection, RosterItem, ActionButton, R, Gibbet, DraggableItem, COLORS.
 - /src/components/roster/MiniNetworkDiagram.jsx: MiniNetworkDiagram (main export), renders a miniature neural network diagram for brain type cards.
@@ -84,5 +84,8 @@ This mapping should help track down import issues and clarify which files provid
 
 **2026-03-03 03:14 UTC:**
 - Visual polish and scroll/zoom bugfix for buy/selection panels complete. All buy panels now use shared SlidePanel with zoom-compensated height and margin auto centering. No more clipping at top or bottom at any UI scale. Code duplication removed.
+
+**2026-03-03 03:30 UTC:**
+- Buy menus for brains and bodies are now injected from App.jsx and rendered in RightPanel via props. BrainsRoster and BodiesRoster are no longer rendered directly in App or RightPanel. Unlock and resource deduction logic now follows the upgrades sidebar pattern for robust reactivity. This file now matches the actual codebase structure as of this commit.
 
 ### Note remember to update this file when adding, creating or modifying files and their components.

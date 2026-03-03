@@ -21,6 +21,7 @@ import { CombinePanel } from "./RightPanel.jsx";
 import RightPanel from "./RightPanel.jsx";
 import PredictionRing from "../roster/PredictionRing.jsx";
 import SelectedEntityPanel from "../left/SelectedEntityPanel.jsx";
+import LeftPanel from "./LeftPanel.jsx";
 
 function safeNum(val, fallback = 0) {
   return typeof val === "number" && isFinite(val) ? val : fallback;
@@ -165,6 +166,10 @@ export default function App() {
   // New: state for dropped items
   const [combineBrain, setCombineBrain] = useState(null);
   const [combineBody, setCombineBody] = useState(null);
+
+  // --- Buy menu panel injection for brains/bodies (upgrades sidebar pattern) ---
+  const [brainsBuyMenuPanel, setBrainsBuyMenuPanel] = useState(null);
+  const [bodiesBuyMenuPanel, setBodiesBuyMenuPanel] = useState(null);
 
   // Handler for drop into combine panel slots
   const handleDropBrain = (item) => {
@@ -350,7 +355,13 @@ export default function App() {
 
   const [rightTab, setRightTab] = useState("upgrades"); // "upgrades" or "gibbets"
 
-  // --- Center column fixed container ---
+  const [purchaseHandler, setPurchaseHandler] = useState(null);
+
+  // Pass handler up from Terrarium
+  const handlePurchaseHandler = useCallback((handler) => {
+    setPurchaseHandler(() => handler);
+  }, []);
+
   return (
     <DragProvider>
       <div style={{
@@ -364,41 +375,14 @@ export default function App() {
         padding: 0,
       }}>
         {/* Left: Network/training sidebar (fixed) */}
-        <div style={{
-          width: 340,
-          minWidth: 240,
-          maxWidth: 420,
-          background: "#0a0e1a",
-          borderRight: "1px solid #1a1e2a",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "flex-start",
-          position: "fixed",
-          left: 0,
-          top: 0,
-          bottom: 0,
-          zIndex: 10,
-          padding: "32px 0 0 0",
-          maxHeight: `${100 / UI_ZOOM}vh`,
-          overflowY: "auto"
-        }}>
-          <SelectedEntityPanel />
-          <div style={{ width: "100%", maxWidth: 400, margin: "0 auto 18px auto" }}>
-            {trainerBrain && (
-              <NetworkViz
-                brain={trainerBrain}
-                network={trainerNetwork}
-                inputValue={view === "trainer" ? indicator.oneHot : terrariumIndicator.oneHot}
-                animTrigger={networkUpdateTick}
-                style={{ width: "100%", height: "auto", maxWidth: 400, aspectRatio: "1.06" }}
-              />
-            )}
-          </div>
-          {/* Resource counters for terrarium mode */}
-          {terrariumResourceCounters}
-        </div>
-
+        <LeftPanel
+          trainerBrain={trainerBrain}
+          trainerNetwork={trainerNetwork}
+          indicator={indicator}
+          view={view}
+          networkUpdateTick={networkUpdateTick}
+          terrariumResourceCounters={terrariumResourceCounters}
+        />
         {/* Center: Main content (fixed-size container) */}
         <div style={{
           position: "absolute",
@@ -737,6 +721,7 @@ export default function App() {
                     onUpgradesSidebar={setUpgradesSidebar}
                     onUpgradeLevelsChange={handleTerrariumUpgradeLevelsChange}
                     parentUpgradeLevels={terrariumUpgradeLevels}
+                    onPurchaseHandler={handlePurchaseHandler}
                   />
                   {/* Terrarium 1 training panel, only if active */}
                   {activeTerrarium === 1 && terrariumTrainingPanel}
@@ -770,6 +755,7 @@ export default function App() {
                         onUpgradesSidebar={setUpgradesSidebar}
                         onUpgradeLevelsChange={handleTerrariumUpgradeLevelsChange}
                         parentUpgradeLevels={terrariumUpgradeLevels}
+                        onPurchaseHandler={handlePurchaseHandler}
                       />
                       {/* Terrarium 2 training panel, only if active */}
                       {activeTerrarium === 2 && terrarium2TrainingPanel}
@@ -794,12 +780,12 @@ export default function App() {
           onDropBody={handleDropBody}
           onCombine={handleCombine}
           onCancel={handleCombineCancel}
+          brainsBuyMenuPanel={brainsBuyMenuPanel}
+          bodiesBuyMenuPanel={bodiesBuyMenuPanel}
         />
         {rightTab === "gibbets" && (
           <div style={{ padding: "0 12px 32px", display: "flex", flexDirection: "column", gap: 12 }}>
-            <BrainsRoster setDraggingBrain={setDraggingBrain} />
-            <BodiesRoster setDraggingBody={setDraggingBody} />
-            <GibbetRoster />
+            {/* Buy menus and GibbetRoster now injected via RightPanel */}
           </div>
         )}
       </div>

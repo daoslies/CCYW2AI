@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useWorld } from "../../store/worldStore.jsx";
 import { useDragStore } from "../../store/dragStore.jsx";
 import { RosterSection, RosterItem, StatusPip, ActionButton } from "./RosterSection.jsx";
@@ -41,13 +41,26 @@ export function BrainIcon({ typeId, size = 28 }) {
   return <span style={{ fontSize: size * 0.85 }}>🧠</span>;
 }
 
-export default function BrainsRoster({ onDragStart }) {
+export default function BrainsRoster({ onDragStart, onResourceDeduct, injectPanel }) {
   const { brains, addBrain, usedBrainIds, activeTrainerId, setActiveTrainerId, getNetwork, weatherBrainUnlocked } = useWorld();
   const { setDraggingItem } = useDragStore();
   const { selected, select } = useSelection();
 
   const [showTypeSelect, setShowTypeSelect] = useState(false);
   const [selectedTypeId, setSelectedTypeId] = useState("standard");
+
+  // Always re-render when unlock state changes
+  useEffect(() => {
+    if (injectPanel) {
+      injectPanel(
+        <BrainsRoster
+          onDragStart={onDragStart}
+          onResourceDeduct={onResourceDeduct}
+        />
+      );
+    }
+    // eslint-disable-next-line
+  }, [brains, weatherBrainUnlocked]);
 
   const handleDragStart = (brain) => {
     setDraggingItem({ type: "brain", payload: brain });
@@ -73,22 +86,19 @@ export default function BrainsRoster({ onDragStart }) {
               key={type.id}
               brainType={type}
               selected={BRAIN_TYPES[selectedTypeId]}
-              onSelect={bt => setSelectedTypeId(bt.id)}
+              onSelect={bt => {
+                if (getUnlocked(bt.id)) {
+                  addBrain(bt.id, `Brain ${brains.length + 1}`, onResourceDeduct);
+                  setShowTypeSelect(false);
+                } else {
+                  setSelectedTypeId(bt.id);
+                }
+              }}
               style={{}}
             />
           ))}
         </div>
         <div style={{ width: '100%', marginTop: 12 }}>
-          <button
-            onClick={() => {
-              addBrain(selectedTypeId, `Brain ${brains.length + 1}`);
-              setShowTypeSelect(false);
-            }}
-            disabled={!getUnlocked(selectedTypeId)}
-            style={{ width: "100%", padding: "10px 0", borderRadius: 8, border: "none", background: getUnlocked(selectedTypeId) ? "linear-gradient(135deg, #163020 0%, #0e2018 100%)" : "#0a0a12", color: getUnlocked(selectedTypeId) ? "#4ade80" : "#2a2a35", fontWeight: 700, fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", cursor: getUnlocked(selectedTypeId) ? "pointer" : "not-allowed", transition: "all 0.15s", boxShadow: getUnlocked(selectedTypeId) ? "0 0 0 1px #1e4028" : "0 0 0 1px #111118", fontFamily: "inherit" }}
-          >
-            Create
-          </button>
           <button
             onClick={() => setShowTypeSelect(false)}
             style={{ width: "100%", padding: "6px 0", borderRadius: 8, border: "none", background: "none", color: "#333", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", transition: "color 0.15s", marginTop: 4 }}

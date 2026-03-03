@@ -35,13 +35,15 @@ export default function SelectedEntityPanel() {
     // (If you want to reset tab on selection, add a useEffect here)
     return (
       <div style={{
-        margin: "0 12px 16px",
+        margin: "0 0 16px 0", // remove horizontal margin for full width
         background: "#0a0a13",
         border: "1px solid #1a1a2a",
         borderRadius: 12,
         overflow: "hidden",
         flexShrink: 0,
         minWidth: 0,
+        width: "100%", // ensure full width of parent
+        boxSizing: "border-box"
       }}>
         <EntityHeader selected={selected} brain={brain} body={body} gibbet={gibbet} simState={simState} assignedSlots={assignedSlots} network={network} />
         <div style={{ display: "flex", borderBottom: "1px solid #1a1a2a" }}>
@@ -88,16 +90,15 @@ export default function SelectedEntityPanel() {
     const network = getNetwork(brain.id);
     return (
       <div style={{
-        margin: "0 12px 16px",
+        margin: "0 0 16px 0", // remove horizontal margin for full width
         background: "#0a0a13",
         border: "1px solid #1a1a2a",
         borderRadius: 12,
         overflow: "hidden",
         flexShrink: 0,
         minWidth: 0,
-        height: 140,
-        padding: "10px 12px",
-        boxSizing: "border-box",
+        width: "100%", // ensure full width of parent
+        boxSizing: "border-box"
       }}>
         <EntityHeader selected={selected} brain={brain} network={network} />
         <BrainDetail brain={brain} network={network} />
@@ -111,16 +112,15 @@ export default function SelectedEntityPanel() {
     if (!body) return null;
     return (
       <div style={{
-        margin: "0 12px 16px",
+        margin: "0 0 16px 0", // remove horizontal margin for full width
         background: "#0a0a13",
         border: "1px solid #1a1a2a",
         borderRadius: 12,
         overflow: "hidden",
         flexShrink: 0,
         minWidth: 0,
-        height: 140,
-        padding: "10px 12px",
-        boxSizing: "border-box",
+        width: "100%", // ensure full width of parent
+        boxSizing: "border-box"
       }}>
         <EntityHeader selected={selected} body={body} />
         <BodyDetail body={body} />

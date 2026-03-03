@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useWorld } from "../../store/worldStore.jsx";
 import { RosterSection, RosterItem, StatusPip, ActionButton } from "./RosterSection.jsx";
 import { R } from "../../styles/rosterTokens.js";
@@ -38,21 +38,32 @@ function MultiplierBars({ multipliers }) {
   );
 }
 
-export default function BodiesRoster({ onDragStart, setDraggingBody }) {
-  const { bodies, addBody, usedBodyIds, gibbets } = useWorld();
+export default function BodiesRoster({ onDragStart, setDraggingBody, onResourceDeduct, injectPanel }) {
+  const { bodies, addBody, usedBodyIds, gibbets, unlockedBodyTypes } = useWorld();
   const { selected, select } = useSelection();
   const [showTypeSelect, setShowTypeSelect] = useState(false);
   const [selectedTypeId, setSelectedTypeId] = useState("balanced");
+
+  // Always re-render when unlock state changes
+  useEffect(() => {
+    if (injectPanel) {
+      injectPanel(
+        <BodiesRoster
+          onDragStart={onDragStart}
+          setDraggingBody={setDraggingBody}
+          onResourceDeduct={onResourceDeduct}
+        />
+      );
+    }
+    // eslint-disable-next-line
+  }, [bodies, unlockedBodyTypes]);
 
   const handleDragStart = (body) => {
     if (setDraggingBody) setDraggingBody(body);
     if (onDragStart) onDragStart(body);
   };
 
-  const getUnlocked = (typeId) => {
-    const type = BODY_TYPES.find(b => b.id === typeId);
-    return type?.unlocked;
-  };
+  const getUnlocked = (typeId) => unlockedBodyTypes.includes(typeId);
 
   // Type selection panel using SlidePanel and BodyTypeCard
   const typeSelectPanel = (
@@ -60,50 +71,28 @@ export default function BodiesRoster({ onDragStart, setDraggingBody }) {
       onMouseLeave={() => setShowTypeSelect(false)}
       style={{ width: 'fit-content', margin: '0 auto' }}
     >
-      <SlidePanel isActive={showTypeSelect} width={160} rightOffset={0} style={{
-        borderRadius: 12,
-        background: "#0d0d16",
-        borderLeft: "1px solid #1a1e2a",
-        boxShadow: "-4px 0 32px rgba(0,0,0,0.5)",
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'stretch',
-        justifyContent: 'flex-start',
-        height: 'calc(100vh - 64px)', // Leaves 32px at top and bottom
-        maxHeight: 'calc(100vh - 64px)',
-        top: 32,
-        bottom: 32,
-        position: 'fixed',
-        right: 0,
-        zIndex: 30,
-        overflow: 'hidden',
-        padding: 0,
-      }}>
-        <div style={{ flex: '0 0 auto', padding: '24px 0 0 0' }}>
-          <PanelHeader label="Select Body Type" />
-        </div>
-        <div style={{ width: "100%", maxWidth: 140, flex: '1 1 auto', display: "flex", flexDirection: "column", gap: 8, overflowY: 'auto', minHeight: 0, boxSizing: 'border-box', paddingTop: 8, paddingBottom: 8 }}>
-          {BODY_TYPES.map((type) => (
+      <SlidePanel isActive={showTypeSelect} width={160} rightOffset={0}>
+        <PanelHeader label="Select Body Type" />
+        <div style={{ width: "100%", maxWidth: 140, display: "flex", flexDirection: "column", gap: 8, overflowY: 'auto', minHeight: 0, boxSizing: 'border-box', paddingTop: 8, paddingBottom: 8 }}>
+          {BODY_TYPES.map((type, i) => (
             <BodyTypeCard
               key={type.id}
               bodyType={type}
               selected={BODY_TYPES.find(b => b.id === selectedTypeId)}
-              onSelect={bt => setSelectedTypeId(bt.id)}
+              onSelect={bt => {
+                if (getUnlocked(bt.id)) {
+                  addBody(bt.id, `Body ${bodies.length + 1}`, onResourceDeduct);
+                  setShowTypeSelect(false);
+                } else {
+                  setSelectedTypeId(bt.id);
+                }
+              }}
               style={{}}
             />
           ))}
         </div>
+        {/* Remove buy button, keep only Cancel */}
         <div style={{ flex: '0 0 auto', marginTop: 12, padding: '0 0 18px 0' }}>
-          <button
-            onClick={() => {
-              addBody(selectedTypeId, `Body ${bodies.length + 1}`);
-              setShowTypeSelect(false);
-            }}
-            disabled={!getUnlocked(selectedTypeId)}
-            style={{ width: "100%", padding: "10px 0", borderRadius: 8, border: "none", background: getUnlocked(selectedTypeId) ? "linear-gradient(135deg, #163020 0%, #0e2018 100%)" : "#0a0a12", color: getUnlocked(selectedTypeId) ? "#4ade80" : "#2a2a35", fontWeight: 700, fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", cursor: getUnlocked(selectedTypeId) ? "pointer" : "not-allowed", transition: "all 0.15s", boxShadow: getUnlocked(selectedTypeId) ? "0 0 0 1px #1e4028" : "0 0 0 1px #111118", fontFamily: "inherit" }}
-          >
-            Acquire
-          </button>
           <button
             onClick={() => setShowTypeSelect(false)}
             style={{ width: "100%", padding: "6px 0", borderRadius: 8, border: "none", background: "none", color: "#333", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", transition: "color 0.15s", marginTop: 4 }}

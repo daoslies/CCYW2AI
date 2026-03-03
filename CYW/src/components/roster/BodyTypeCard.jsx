@@ -7,6 +7,8 @@ import { MultiplierDisplay } from "./MultiplierDisplay.jsx";
 export function BodyTypeCard({ bodyType, selected, onSelect }) {
   const isSelected = selected?.id === bodyType.id;
   const isLocked = !bodyType.unlocked;
+  // Use cost from bodyType, fallback to 1 green for testing
+  const cost = bodyType.cost || { red: 0, green: 1, blue: 0 };
   return (
     <button
       onClick={() => !isLocked && onSelect(bodyType)}
@@ -70,6 +72,12 @@ export function BodyTypeCard({ bodyType, selected, onSelect }) {
         }}>
           {bodyType.description}
         </p>
+        <div style={{ display: "flex", gap: 8, marginTop: 6, fontSize: 11, color: isLocked ? "#555" : bodyType.accentColor, fontWeight: 500 }}>
+          <span>Cost:</span>
+          {cost.red > 0 && <span style={{ color: "#f87171" }}>{cost.red}🟥</span>}
+          {cost.green > 0 && <span style={{ color: "#4ade80" }}>{cost.green}🟩</span>}
+          {cost.blue > 0 && <span style={{ color: "#7dd3fc" }}>{cost.blue}🟦</span>}
+        </div>
       </div>
     </button>
   );
