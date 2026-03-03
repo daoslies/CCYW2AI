@@ -4,6 +4,20 @@ _Last updated: 2026-02-27_
 
 This document provides a concise mapping of the main files and their key functions/components, to help understand the codebase structure and imports during refactoring. All filepaths are relative to `/src/`.
 
+---
+
+## Upcoming: Brain Types & Body Types (Sprint 2026-03-03)
+
+- /src/data/brainTypes.js: BRAIN_TYPES array, type definitions, icons, unlock logic for brains (weather-aware, etc).
+- /src/data/bodyTypes.js: BODY_TYPES array, type definitions, icons, unlock logic for bodies (resource multipliers, etc).
+- /src/store/worldStore.jsx: Will be updated to support brain/body types, unlocks, and correct creation logic.
+- /src/components/roster/BrainsRoster.jsx: Will display brain types, unlocks, icons, and badges.
+- /src/components/roster/BodiesRoster.jsx: Will display body types, unlocks, icons, and compact multiplier bar.
+- /src/components/panels/RightPanel.jsx: Will integrate new type displays and combine logic.
+- /src/engine/terrariumEngine.js: Will integrate weather state and resource multiplier logic.
+
+---
+
 ## panels/
 - /src/components/panels/App.jsx: CombinePanel, main app logic, imports NetworkViz, TrainingButtons, Terrarium, DropZone, DragLayer, BrainsRoster, BodiesRoster, GibbetRoster, RosterSection, AccuracyRing, Gibbet.
 - /src/components/panels/LeftPanel.jsx: LeftPanel (main export), imports GibbetBioPanel (from App.jsx), NetworkViz, useWorld.

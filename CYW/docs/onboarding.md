@@ -1,5 +1,18 @@
 Welcome to the team.
 
+## New for 2026: Brain Types & Body Types
+
+The game now features multiple Brain Types and Body Types, each with unique gameplay effects and unlock conditions:
+
+- **Brain Types**: Brains can now have special types (e.g., weather-aware brains) that change how they process input and interact with the terrarium environment. Some types are unlockable via upgrades. Brain type affects the input vector and can provide special abilities.
+- **Body Types**: Bodies now come in different types, each with their own resource collection multipliers and visual accents. Some body types are unlockable. The body type determines how efficiently a gibbet collects different resources.
+
+These features are fully data-driven and extensible. See `/src/data/brainTypes.js` and `/src/data/bodyTypes.js` for type definitions, unlock logic, and icons. The store (`worldStore.jsx`) and engine (`terrariumEngine.js`) have been updated to support these new mechanics. The UI (BrainsRoster, BodiesRoster, CombinePanel) now displays type icons, unlocks, and compatibility info.
+
+For architectural details, see the top of `task_board.md` and `codebase_structure.md`.
+
+---
+
 What we're building
 This is a terrarium idle game with a neural network training mechanic at its core. The central conceit is that you're training AI creatures — called gibbets — by teaching their brains to recognise colour signals. A well-trained gibbet will correctly collect resources from its terrarium; a poorly trained one will blunder around collecting the wrong things and get poisoned.
 It's an idle game in the sense that once trained, gibbets work autonomously. But the training itself is an active, hands-on loop that sits at the heart of the experience.
