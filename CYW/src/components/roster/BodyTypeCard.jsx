@@ -74,9 +74,39 @@ export function BodyTypeCard({ bodyType, selected, onSelect }) {
         </p>
         <div style={{ display: "flex", gap: 8, marginTop: 6, fontSize: 11, color: isLocked ? "#555" : bodyType.accentColor, fontWeight: 500 }}>
           <span>Cost:</span>
-          {cost.red > 0 && <span style={{ color: "#f87171" }}>{cost.red}🟥</span>}
-          {cost.green > 0 && <span style={{ color: "#4ade80" }}>{cost.green}🟩</span>}
-          {cost.blue > 0 && <span style={{ color: "#7dd3fc" }}>{cost.blue}🟦</span>}
+          {cost.red > 0 && (
+            <span style={{ color: "#f87171", display: "flex", alignItems: "center", gap: 2 }}>
+              {cost.red}
+              <svg width={16} height={16} viewBox="-12 -12 24 24" style={{ verticalAlign: "middle" }}>
+                {/* Red resource icon */}
+                <g><polygon points="0,-7 6,-1 0,6 -6,-1" fill="#ef4444" /></g>
+              </svg>
+            </span>
+          )}
+          {cost.green > 0 && (
+            <span style={{ color: "#4ade80", display: "flex", alignItems: "center", gap: 2 }}>
+              {cost.green}
+              <svg width={16} height={16} viewBox="-12 -12 24 24" style={{ verticalAlign: "middle" }}>
+                {/* Green resource icon */}
+                <g>
+                  <ellipse cx={-2} cy={-3} rx={4.5} ry={7.5} fill="#22c55e" opacity={0.92} transform="rotate(-22)" />
+                  <ellipse cx={3}  cy={-2} rx={3.5}   ry={6.5} fill="#22c55e" opacity={0.80} transform="rotate(28)" />
+                  <ellipse cx={1}  cy={-7} rx={2.5} ry={3.5} fill="#86efac" opacity={0.50} transform="rotate(5)" />
+                </g>
+              </svg>
+            </span>
+          )}
+          {cost.blue > 0 && (
+            <span style={{ color: "#7dd3fc", display: "flex", alignItems: "center", gap: 2 }}>
+              {cost.blue}
+              <svg width={16} height={16} viewBox="-12 -12 24 24" style={{ verticalAlign: "middle" }}>
+                {/* Blue resource icon */}
+                <g>
+                  <path d="M0,-8 C6,-3 8,2 0,8 C-8,2 -6,-3 0,-8" fill="#3b82f6" opacity={0.88} />
+                </g>
+              </svg>
+            </span>
+          )}
         </div>
       </div>
     </button>
