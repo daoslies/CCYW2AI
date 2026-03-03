@@ -96,7 +96,7 @@ export const UPGRADES = [
     id: "unlockRedBody",
     label: "Unlock Sanguine Body",
     description: "Unlocks the red-specialist body type (Sanguine).",
-    cost: lvl => ({ red: 8, green: 0, blue: 0 }),
+    cost: lvl => ({ red: 0, green: 0, blue: 0 }),
     maxLevel: 1,
     apply: (gs, lvl) => {
       if (lvl >= 1) {
@@ -114,7 +114,7 @@ export const UPGRADES = [
     id: "unlockGreenBody",
     label: "Unlock Verdant Body",
     description: "Unlocks the green-specialist body type (Verdant).",
-    cost: lvl => ({ red: 0, green: 8, blue: 0 }),
+    cost: lvl => ({ red: 0, green: 0, blue: 0 }),
     maxLevel: 1,
     apply: (gs, lvl) => {
       if (lvl >= 1) {

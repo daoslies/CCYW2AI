@@ -69,7 +69,10 @@ export default function BrainsRoster({ onDragStart, onResourceDeduct, injectPane
 
   const getUnlocked = (typeId) => {
     if (typeId === "weather") return weatherBrainUnlocked;
-    return BRAIN_TYPES[typeId]?.unlocked;
+    // Standard brain is always unlocked
+    if (typeId === "standard") return true;
+    // Add more unlock logic here if more brain types are added
+    return false;
   };
 
   // Type selection panel using SlidePanel and BrainTypeCard
@@ -86,6 +89,7 @@ export default function BrainsRoster({ onDragStart, onResourceDeduct, injectPane
               key={type.id}
               brainType={type}
               selected={BRAIN_TYPES[selectedTypeId]}
+              isUnlocked={getUnlocked(type.id)}
               onSelect={bt => {
                 if (getUnlocked(bt.id)) {
                   addBrain(bt.id, `Brain ${brains.length + 1}`, onResourceDeduct);

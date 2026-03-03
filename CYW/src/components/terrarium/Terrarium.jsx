@@ -368,8 +368,17 @@ export default function Terrarium({
     if (upgId === "weatherBrain") {
       setWeatherBrainUnlocked(true); // worldStore setter
     }
-    if (upgId === "bodyTypeUnlock") {
-      unlockBodyType(unlockedBodyTypeId); // worldStore setter
+    if (upgId === "unlockRedBody") {
+      unlockBodyType("red-specialist");
+    }
+    if (upgId === "unlockGreenBody") {
+      unlockBodyType("green-specialist");
+    }
+    if (upgId === "unlockBlueBody") {
+      unlockBodyType("blue-specialist");
+    }
+    if (upgId === "unlockInverterBody") {
+      unlockBodyType("inverter");
     }
   }
 

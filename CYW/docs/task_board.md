@@ -106,3 +106,25 @@ Costs are shown in the type selection panels but the display may not be pulling 
 ---
 
 *Add new issues below as needed. Mark completed items with ~~strikethrough~~ and move them to a "Done" section if desired.*
+
+---
+
+# Task Board
+
+## Completed
+- Resource deduction and unlock propagation bugs in brains/bodies buy menus and upgrades system are fixed.
+- Purchasing brains/bodies now deducts from the correct resource pile and unlocks propagate to the UI, making new types available immediately.
+- Left and right panels refactored for canonical structure and robust reactivity; buy menu logic matches upgrades sidebar pattern.
+- Documentation (task_board.md, codebase_structure.md) updated to reflect changes.
+- Visual update: resource icons (SVGs) are used for costs in buy menus.
+- Code-by-code audit of unlock propagation for brain/body types and their buy menus is complete and robust.
+- Unlock state management in worldStore.jsx and its propagation to BrainsRoster.jsx and BodiesRoster.jsx is confirmed and fixed.
+- Buy menus immediately reflect unlocks after upgrades.
+- Final polish and verification of UI/UX for buy menus and unlocks completed.
+
+## Pending
+- Further polish, refactoring, or new features as needed.
+
+---
+
+(Last updated: 2026-03-03)

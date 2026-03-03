@@ -79,6 +79,7 @@ export default function BodiesRoster({ onDragStart, setDraggingBody, onResourceD
               key={type.id}
               bodyType={type}
               selected={BODY_TYPES.find(b => b.id === selectedTypeId)}
+              isUnlocked={getUnlocked(type.id)}
               onSelect={bt => {
                 if (getUnlocked(bt.id)) {
                   addBody(bt.id, `Body ${bodies.length + 1}`, onResourceDeduct);
@@ -131,6 +132,7 @@ export default function BodiesRoster({ onDragStart, setDraggingBody, onResourceD
         const isSelected = selected?.type === "body" && selected?.id === body.id;
         const usingGibbet = used ? gibbets.find(g => g.bodyId === body.id) : null;
         const bodyType = BODY_TYPES.find(b => b.id === body.typeId) || BODY_TYPES[0];
+        // Use store unlock state for this type
         const unlocked = getUnlocked(bodyType.id);
         return (
           <div

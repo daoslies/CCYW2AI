@@ -4,9 +4,10 @@ import { CornerTick } from "../shared/CornerTick.jsx";
 import Gibbet from "../gibbet/Gibbet.jsx";
 import { MultiplierDisplay } from "./MultiplierDisplay.jsx";
 
-export function BodyTypeCard({ bodyType, selected, onSelect }) {
+export function BodyTypeCard({ bodyType, selected, onSelect, isUnlocked }) {
   const isSelected = selected?.id === bodyType.id;
-  const isLocked = !bodyType.unlocked;
+  // Use the isUnlocked prop (from store), not static unlocked property
+  const isLocked = !isUnlocked;
   // Use cost from bodyType, fallback to 1 green for testing
   const cost = bodyType.cost || { red: 0, green: 1, blue: 0 };
   return (

@@ -4,8 +4,8 @@ import { BrainIcon } from "./BrainsRoster.jsx";
 import { MiniNetworkDiagram } from "./MiniNetworkDiagram.jsx";
 import { CornerTick } from "../shared/CornerTick.jsx";
 
-export function BrainTypeCard({ brainType, selected, onSelect }) {
-  const isLocked = !brainType.unlocked;
+export function BrainTypeCard({ brainType, selected, onSelect, isUnlocked }) {
+  const isLocked = !isUnlocked;
   const isSelected = selected?.id === brainType.id;
   // For now, cost is hardcoded in worldStore.jsx (1 red for brain)
   const cost = brainType.cost || { red: 1, green: 0, blue: 0 };
