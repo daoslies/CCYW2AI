@@ -4,6 +4,33 @@ This document tracks current issues, feature requests, and improvements for the 
 
 ---
 
+## Sprint: Brain Types & Body Types (2026-03-03)
+
+**Goal:** Implement the new Brain Types (weather-aware, unlockable, input vector logic) and Body Types (resource multipliers, unlocks, visuals, UI, multiplier logic) as per the approved architectural plan. Ensure all supporting UI/UX, engine, and documentation updates are included.
+
+### Sprint Tasks
+- [ ] Create `src/data/brainTypes.js` and `src/data/bodyTypes.js` with type definitions, icons, and unlock logic.
+- [ ] Update `worldStore.jsx` to support brain/body types, unlocks, and correct creation logic.
+- [ ] Integrate weather state into terrarium UI and brain input vector logic.
+- [ ] Implement resource multiplier logic for body types in the engine.
+- [ ] Update BrainsRoster and BodiesRoster to display types, unlocks, icons, and compact multiplier bar.
+- [ ] Add compatibility/insight display for brain/body combos in the inspector.
+- [ ] Add/Update documentation: codebase_structure.md, onboarding.md, and inline code comments.
+- [ ] Review and update task board as work progresses.
+
+### Architectural Notes
+- See architectural approval and plan (2026-03-02) for data structures, UI/UX, and engine integration details.
+- Ensure all new types and unlocks are data-driven and extensible.
+- Maintain backwards compatibility for existing brains/bodies.
+
+### Documentation & Readiness Checklist
+- [ ] All new/changed files and modules documented in codebase_structure.md
+- [ ] Onboarding.md updated with new gameplay and system concepts
+- [ ] Inline code comments for all new/complex logic
+- [ ] Task board updated as tasks are completed
+
+---
+
 ## Priority Assessment (2026-03-01 17:50 UTC)
 
 ### Fix first — these block other work or cause visible regressions:
@@ -12,7 +39,7 @@ This document tracks current issues, feature requests, and improvements for the 
 
 ### Do next — high value, relatively self-contained:
 - ~~#9 — Trainer Brain Sync: Wire up store. Clicking a brain in BrainsRoster or a gibbet in GibbetRoster should call setActiveTrainerId(brain.id). One line per click handler. High gameplay value, minimal risk.~~ _(Completed: Both rosters now set active trainer brain on click as required.)_
-- **#11 — Brain/Body/Gibbet Constraints**: Design and partial implementation exist. Finish greying out body icons in BodiesRoster and remove any remaining brain reuse guards from combine.
+- ~~#11 — Brain/Body/Gibbet Constraints**: Design and partial implementation exist. Finish greying out body icons in BodiesRoster and remove any remaining brain reuse guards from combine.~~ _(Completed: BodiesRoster now greys out used bodies, disables drag for used bodies, but allows selection/info. Draggable icon is only enabled for unused bodies. Brain reuse guard removed from combineGibbet.)_
 - **#3 — Weather Terrarium & Drag-Select**: Drag-select is a one-liner in DraggableItem (call select(type, id) from startDrag). Weather terrarium needs further investigation.
 - **#10 — Icon Wiggle Feedback**: Add CSS animation to DraggableItem. Default: slow 3s gentle oscillation. Hover: faster, larger amplitude. Pure CSS.
 - **#14 — Decrease width of combine panel**: Make the combine panel narrower for a more compact UI.
@@ -58,11 +85,13 @@ This document tracks current issues, feature requests, and improvements for the 
    - ~~Selecting a brain or gibbet should update the trainer to have that brain (or the brain attached to a gibbet) as the active brain in training.~~
    - _Fixed: Both BrainsRoster and GibbetRoster now set active trainer brain on click as required._
 
-10. **Icon Wiggle Feedback** _(2026-03-01 05:47 UTC)_
-   - Brain, body, and gibbet icons should wiggle slightly by default, and wiggle more when hovered, to encourage drag-and-drop interaction.
+10. ~~Icon Wiggle Feedback~~ _(2026-03-01 05:47 UTC, completed 2026-03-03 00:18 UTC)_
+   - ~~Brain, body, and gibbet icons should wiggle slightly by default, and wiggle more when hovered, to encourage drag-and-drop interaction.~~
+   - _Completed: Implemented separate CSS wiggle classes for brain/body (higher amplitude) and gibbet (lower amplitude). Each icon now animates appropriately._
 
-11. **Brain/Body/Gibbet Constraints** _(2026-03-01 05:47 UTC)_
-   - A brain can be used to make any number of gibbets, but a body can only be used once. Grey out the icon if a body is in use.
+11. ~~Brain/Body/Gibbet Constraints~~ _(2026-03-01 05:47 UTC, completed 2026-03-01 19:50 UTC)_
+   - ~~A brain can be used to make any number of gibbets, but a body can only be used once. Grey out the icon if a body is in use.~~
+   - _Fixed: BodiesRoster now greys out used bodies, disables drag for used bodies, but allows selection/info. Draggable icon is only enabled for unused bodies. Brain reuse guard removed from combineGibbet._
 
 12. **Left Panel Info Section** _(2026-03-01 05:47 UTC)_
    - Improve the left panel info section.
@@ -80,4 +109,25 @@ This document tracks current issues, feature requests, and improvements for the 
 
 *Add new issues below as needed. Mark completed items with ~~strikethrough~~ and move them to a "Done" section if desired.*
 
+
+new unpolished issues:
+
+
+   user clickable resources to give them something to click, cus they gunna wanna click. (but its v slow to mine via this method, is really just to pacify the user like jangling keys in front of a baby. The real resource collection should be conducted by gibbits.)
+
+   --
+
+   in gibbit life bio - put lifetime total resource collection by that gibbit.
+
+   And also construct some sort of simple bio.
+
+   age - game time alive
+
+   --
+
+
+   If you are in the trainer tab and pick up a gibbit from the gibbit roster, the button to navigate to the terrarium should light up/glow to indicate to the user that that's where you go to deal with picking up gibbits. (potentially also, while in the trainer tab, if the user drags the gibbit to the terrarium button the button should press on hover. So that it's like the user has been invited to press on the button (via the glow ) while holding a gibbit, in which case they might try to drag the gibbit to the terrarium. so just take them straght to the terraium when that happens.)
+
+
+   -- Swap the ordering of the upgrades and grow gibbets navigation buttons in the right panel, and make grow gibbits the default path. Clearer user journey to start on the trainer page - with a mind selected and visible on the mind roster in the grow gibbits panel. (and potentially all the other aspects of the grow gibbits panel greyed out and them unlocked once the mind is first trained)
 

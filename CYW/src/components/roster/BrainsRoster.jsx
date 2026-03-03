@@ -61,6 +61,7 @@ export default function BrainsRoster({ onDragStart }) {
                 id={brain.id}
                 payload={brain}
                 onDragStart={() => handleDragStart(brain)}
+                className="wiggle-brainbody wiggle-brainbody-hover"
               >
                 <span role="img" aria-label="brain" style={{ fontSize: 28, margin: 0, padding: 0, display: "block" }}>
                   🧠

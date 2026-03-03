@@ -44,28 +44,34 @@ export default function BodiesRoster({ onDragStart, setDraggingBody }) {
           <div
             key={body.id}
             className={"roster-item" + (isSelected ? " selected" : "")}
-            onClick={() => !used && select("body", body.id)}
+            onClick={() => select("body", body.id)}
             style={{
-              cursor: used ? "not-allowed" : "pointer",
+              cursor: "pointer",
               background: isSelected ? "#23234a" : undefined,
               opacity: used ? 0.5 : 1,
-              pointerEvents: used ? "auto" : "auto",
+              pointerEvents: "auto",
               position: "relative"
             }}
             title={used ? `This body is already in use${usingGibbet ? ` (in ${usingGibbet.name})` : ''}` : undefined}
           >
             <div style={{ width: 32, height: 32, display: "inline-block", verticalAlign: "middle", position: "relative" }}>
-              <DraggableItem
-                type="body"
-                id={body.id}
-                payload={body}
-                onDragStart={() => handleDragStart(body)}
-                disabled={used}
-              >
+              {used ? (
                 <svg width={32} height={32} style={{ display: "block", margin: 0, padding: 0 }}>
                   <Gibbet x={16} y={16} angle={0} state={"body"} poisoned={false} gainPopups={[]} showEyes={false} color={body.color} />
                 </svg>
-              </DraggableItem>
+              ) : (
+                <DraggableItem
+                  type="body"
+                  id={body.id}
+                  payload={body}
+                  onDragStart={() => handleDragStart(body)}
+                  className="wiggle-brainbody wiggle-brainbody-hover"
+                >
+                  <svg width={32} height={32} style={{ display: "block", margin: 0, padding: 0 }}>
+                    <Gibbet x={16} y={16} angle={0} state={"body"} poisoned={false} gainPopups={[]} showEyes={false} color={body.color} />
+                  </svg>
+                </DraggableItem>
+              )}
             </div>
             <RosterItem key={body.id} dimmed={used}>
               <div style={{ flex: 1, minWidth: 0 }}>

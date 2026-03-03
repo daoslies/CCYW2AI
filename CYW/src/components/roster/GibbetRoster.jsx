@@ -64,7 +64,7 @@ export default function GibbetRoster() {
               type="gibbet"
               id={gibbet.id}
               disabled={false}
-              className="draggable-icon"
+              className="wiggle-gibbet wiggle-gibbet-hover"
               style={{ display: "inline-block", marginRight: 12 }}
             >
               <svg width={40} height={44} viewBox="0 0 40 44" style={{ verticalAlign: "middle" }}>

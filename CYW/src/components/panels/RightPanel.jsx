@@ -99,6 +99,7 @@ export default function RightPanel({
           )}
         </div>
       </div>
+      {/* Remove CombinePanel from the scrollable content and render it as a fixed overlay */}
       <CombinePanel
         draggingBrain={draggingBrain}
         draggingBody={draggingBody}
@@ -175,7 +176,7 @@ function CornerTick({ corner, color, active }) {
   );
 }
 
-function CombineSlot({ label, item, isDraggingCompatible, accentColor, icon }) {
+function CombineSlot({ label, item, isDraggingCompatible, accentColor, icon, style }) {
   const isEmpty = !item;
   const isInvited = isEmpty && isDraggingCompatible;
 
@@ -202,6 +203,7 @@ function CombineSlot({ label, item, isDraggingCompatible, accentColor, icon }) {
       justifyContent: "center",
       gap: 6,
       overflow: "hidden",
+      ...style,
     }}>
       { ["topLeft", "topRight", "bottomLeft", "bottomRight"].map(corner => (
         <CornerTick key={corner} corner={corner} color={accentColor} active={isInvited} />
@@ -297,13 +299,13 @@ function CombinePanel({
 
   return (
     <div style={{
-      position: "absolute",
-      right: 280,
-      top: 0,
-      width: 300,
-      height: "100vh",
-      zIndex: 5,
-      transform: isActive ? "translateX(0)" : "translateX(100%)",
+      position: "fixed",
+      right: 0,
+      top: "50%",
+      width: 160,
+      height: "auto",
+      zIndex: 100,
+      transform: isActive ? "translateY(-50%) translateX(0)" : "translateY(-50%) translateX(100%)",
       transition: "transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
       pointerEvents: isActive ? "auto" : "none",
       background: "#0d0d16",
@@ -314,10 +316,12 @@ function CombinePanel({
       alignItems: "center",
       justifyContent: "center",
       gap: 0,
+      borderRadius: 12,
+      padding: 12,
     }}>
       <div style={{
         width: "100%",
-        maxWidth: 260,
+        maxWidth: 140,
         display: "flex",
         flexDirection: "column",
         gap: 12,
@@ -340,6 +344,7 @@ function CombinePanel({
             isDraggingCompatible={!!draggingBrain}
             accentColor="#7dd3fc"
             icon="🧠"
+            style={{ aspectRatio: "1 / 1", width: "100%", minHeight: 64, minWidth: 64, maxWidth: 96, maxHeight: 96 }}
           />
         </DropZone>
         <div style={{
@@ -368,6 +373,7 @@ function CombinePanel({
             isDraggingCompatible={!!draggingBody}
             accentColor="#a78bfa"
             icon="🫀"
+            style={{ aspectRatio: "1 / 1", width: "100%", minHeight: 64, minWidth: 64, maxWidth: 96, maxHeight: 96 }}
           />
         </DropZone>
         <div style={{

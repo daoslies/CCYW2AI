@@ -1,10 +1,14 @@
 import React, { useRef } from "react";
 import { useDrag } from "../../store/dragStore.jsx";
 
-export default function DraggableItem({ type, id, payload, children, onDragStart, as = "div" }) {
+export default function DraggableItem({ type, id, payload, children, onDragStart, as = "div", className }) {
   const { dragging, startDrag } = useDrag();
   const isDragging = dragging?.id === id && dragging?.type === type;
   const ref = useRef();
+
+  const computedClass = !isDragging
+    ? (className || "wiggle wiggle-hover")
+    : undefined;
 
   if (as === "g") {
     // SVG drag handle
@@ -15,6 +19,7 @@ export default function DraggableItem({ type, id, payload, children, onDragStart
           startDrag(type, id, payload, e, ref.current);
           if (typeof onDragStart === 'function') onDragStart(payload);
         }}
+        className={computedClass}
         style={{
           opacity: isDragging ? 0.18 : 1,
           cursor: "grab",
@@ -34,6 +39,7 @@ export default function DraggableItem({ type, id, payload, children, onDragStart
         startDrag(type, id, payload, e, ref.current);
         if (typeof onDragStart === 'function') onDragStart(payload);
       }}
+      className={computedClass}
       style={{
         opacity:   isDragging ? 0.18 : 1,
         transform: isDragging ? "scale(0.92)" : "scale(1)",
