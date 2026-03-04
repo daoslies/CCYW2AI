@@ -96,6 +96,8 @@ Costs are shown in the type selection panels but the display may not be pulling 
 - [x] Defensive filtering for legacy data in collectionHistory.
 - [x] Count/second trace normalization is now global, so heights are directly comparable between colors.
 - [x] See codebase_structure.md for note on allHistories/allBuckets recomputation (refactor candidate).
+- Resource rate calculation in getResourceRate now uses a fixed 10s window (not elastic), so the displayed rate always reflects recent throughput and responds immediately to upgrades. (2026-03-04)
+- Resource rate display now uses an exponential moving average (EMA) for smooth, responsive feedback. (2026-03-04)
 
 ---
 

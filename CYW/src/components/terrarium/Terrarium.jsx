@@ -9,7 +9,7 @@ import {
   snapshot, 
   applyAllUpgrades, 
   TW, TH, GROUND_Y, GRASS, PEBBLES, DUST,
-  getResourceRate
+  updateAndGetResourceRate
 } from "../../engine/terrariumEngine";
 import { NETWORK_CONFIG_T1 } from "../../data/networkConfig.js";
 import { TerrariumScene } from "./TerrariumScene";
@@ -169,7 +169,7 @@ export default function Terrarium({
   const countHistoryRef = useRef(COLORS.map(() => Array(240).fill(0)));
   useEffect(() => {
     if (onResourceCounters) {
-      const rates = gsRef.current ? getResourceRate(gsRef.current) : {};
+      const rates = gsRef.current ? updateAndGetResourceRate(gsRef.current) : {};
       // Floating animation CSS
       const floatAnim = {
         animation: "floatIcon 2.2s ease-in-out infinite"

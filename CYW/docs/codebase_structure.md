@@ -67,6 +67,9 @@ This document provides a concise mapping of the main files and their key functio
 - Crits and all resource flow are included in rate calculations.
 - Defensive filtering for legacy data in collectionHistory.
 - Note: allHistories and allBuckets are computed for global normalization, then recomputed per-color in COLORS.map. This is functionally redundant and could be cleaned up in a future refactor.
+- Resource rate calculation (getResourceRate) uses a fixed 10s window for rate display. This ensures the rate number is always recent and responsive to upgrades. The 60s history for sparklines is unchanged. (2026-03-04)
+- Resource rate display (updateAndGetResourceRate) now uses an exponential moving average (EMA) for smooth, persistent, and responsive feedback. (2026-03-04)
+- Note: allHistories/allBuckets are still recomputed per-color in the sparklines; see task_board.md for refactor note. (2026-03-04)
 
 ## data/
 - /src/data/colors.js: COLORS array, decodeOutput function.

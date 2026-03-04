@@ -176,6 +176,8 @@ export function makeGS(upgradeLevels = {}, UPGRADES = [], config = {}) {
     weather: 0,
     weatherPhase: Math.random() * Math.PI * 2,
     config,
+    collectionRateEMA: { red: 0, green: 0, blue: 0 },
+    collectionRateLastTick: Date.now(),
   };
   applyAllUpgrades(gs, upgradeLevels, UPGRADES);
   gs.resources = makeResources(gs);
@@ -439,19 +441,24 @@ export function getCollectionMultiplier(bodyTypeId, collectedColorId, indicatorC
   return bodyType.multipliers[collectedColorId] ?? 1.0;
 }
 
-// Helper to get resource rate per second for each color
-export function getResourceRate(gs) {
+// Helper to update and get resource rate per second for each color (EMA smoothing)
+export function updateAndGetResourceRate(gs) {
   const now = Date.now();
-  const WINDOW_MS = 60000;
+  const dt = Math.min((now - (gs.collectionRateLastTick ?? now)) / 1000, 0.5);
+  gs.collectionRateLastTick = now;
+
+  const WINDOW_MS = 10000; // 10s look-back for instantaneous rate sample
+  const α = 1 - Math.exp(-dt / 8); // 8s smoothing constant — tweak to taste
+
   const rates = {};
   for (const col of COLORS) {
-    const arr = gs.collectionHistory[col.id] || [];
-    if (arr.length === 0) { rates[col.id] = 0; continue; }
-    const oldest = arr[0].time;
-    const elapsed = Math.min(now - oldest, WINDOW_MS);
-    const windowSecs = Math.max(elapsed / 1000, 1);
-    const totalAmount = arr.reduce((sum, e) => sum + (e.amount ?? 1), 0);
-    rates[col.id] = totalAmount / windowSecs;
+    const recent = (gs.collectionHistory[col.id] || [])
+      .filter(e => now - e.time < WINDOW_MS);
+    const totalAmount = recent.reduce((sum, e) => sum + (e.amount ?? 1), 0);
+    const instantaneous = totalAmount / (WINDOW_MS / 1000);
+
+    gs.collectionRateEMA[col.id] = α * instantaneous + (1 - α) * gs.collectionRateEMA[col.id];
+    rates[col.id] = gs.collectionRateEMA[col.id];
   }
   return rates;
 }
