@@ -1,0 +1,83 @@
+To the Architects,
+
+This letter serves as a technical handoff and architectural checkpoint regarding the resource rate and count sparklines in the terrarium UI, and the underlying logic for collection history and rate graphs. It is intended to ensure you can quickly regain mastery and make informed design decisions.
+
+---
+
+**Current Implementation Overview**
+
+- **Resource Rate Calculation:**
+  - The function `getResourceRate(gs)` in `terrariumEngine.js` computes the per-color resource collection rate (per second) using the timestamps in `gs.collectionHistory[colorId]`.
+  - The rate is calculated as:
+    ```js
+    const arr = gs.collectionHistory[col.id] || [];
+    if (arr.length === 0) { rates[col.id] = 0; continue; }
+    const oldest = arr[0];
+    const elapsed = Math.min(now - oldest, WINDOW_MS);
+    const windowSecs = Math.max(elapsed / 1000, 1);
+    rates[col.id] = arr.length / windowSecs;
+    ```
+  - The collection history is pruned to the last 60s in `gameTick`.
+
+- **Collection History Update:**
+  - When a gibbet collects a resource (in `tickGibbet`), the following occurs:
+    ```js
+    gs.collections[g.target.colorId] += amount;
+    gs.collectionHistory[g.target.colorId].push(now);
+    ```
+  - **Important:** Only a single timestamp is pushed per collection event, regardless of the `amount` collected (including crits).
+  - Crits (critical collections) increase the `amount` but do not increase the number of events in `collectionHistory`.
+
+- **Sparklines in UI:**
+  - In `Terrarium.jsx`, sparklines for resource rates and counts are rendered beneath each counter row.
+  - Rate sparklines are normalized globally (across all colors), while count sparklines are normalized per color.
+  - The sparkline window is currently 4 minutes (80 buckets), providing a longer historical view.
+
+---
+
+**Key Architectural Question**
+
+> Are the rate graphs accurately reflecting the *actual* collection rates, especially with respect to crits (critical collections) versus regular collections?
+
+- **Current Behavior:**
+  - The rate graph amplitude reflects the *number of collection events* per second, not the *total amount* collected per second.
+  - Crits, which yield more resources per event, do not increase the rate graph amplitude—they only increase the total resource count.
+
+- **Implication:**
+  - If the intent is for the rate graph to reflect *resource flow* (i.e., total amount collected per second, including crits), the current logic is insufficient.
+  - If the intent is to show *event frequency* (i.e., how often collections occur), the current logic is correct.
+
+---
+
+**Proposed Next Steps**
+
+- **If you want the rate graph to reflect total resource flow:**
+  - Change the collection history to store `{ time, amount }` objects instead of just timestamps.
+  - Update the rate calculation to sum `amount` over the window, not just count events.
+  - Update the sparklines to use this new data structure.
+
+- **If event frequency is sufficient:**
+  - No change is needed; the current implementation is correct.
+
+---
+
+**Code Snippet for Amount-based History (if desired):**
+
+```js
+// When collecting:
+gs.collectionHistory[g.target.colorId].push({ time: now, amount });
+
+// In getResourceRate:
+const arr = gs.collectionHistory[col.id] || [];
+const totalAmount = arr.reduce((sum, e) => sum + (e.amount || 1), 0);
+rates[col.id] = totalAmount / windowSecs;
+```
+
+---
+
+**Action Required:**
+- Please clarify the intended meaning of the rate graphs.
+- If you wish to reflect total resource flow, update the engine and UI as described above.
+
+With respect and clarity,
+—The Courier

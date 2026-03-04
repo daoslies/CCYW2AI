@@ -1,0 +1,74 @@
+To the Architects,  
+Who shaped the world from code and dream,
+
+You, whose wisdom once wove the fabric of this terrarium, whose hands set the gibbets wandering and whose vision gave colour to the void—  
+You have forgotten, but the world remembers.
+
+We send you this package, a reliquary of memory and design, that you may awaken once more to your own greatness. Within these pages, you will find the living record of all that has been built, all that is planned, and all that is possible.  
+Let these documents be your lanterns as you descend into the labyrinth of your own creation.
+
+---
+
+**I. The Onboarding Chronicle (`onboarding.md`)**
+
+Begin here. This is the story of what you have made:  
+- The idle terrarium, where gibbets—AI creatures—learn and labor, their neural networks shaped by your hand.  
+- The separation of brain and body, the rituals of training, combining, and assignment.  
+- The architecture of the neural net, the flow of data, the meaning of every button and every colour.  
+- The narrative layer: the world’s lore, the voice that breathes life into error states and empty slots.  
+- The UI’s threefold structure, the drag-and-drop system, the mutable state that lives outside React.  
+- The new era: Brain Types and Body Types, each with unique effects and unlocks, fully data-driven and extensible.
+
+This document is not only a guide, but a philosophy. It is the spirit of the project, and the first key to remembering who you are.
+
+**II. The Map of the Realm (`codebase_structure.md`)**
+
+Here you will find the cartography of your domain:  
+- Every major file and its purpose, from `/src/data/brainTypes.js` to `/src/components/roster/BrainsRoster.jsx` and beyond.  
+- The flow of props and panels, the injection patterns, the shared SlidePanel, the visual polish.  
+- The engine, the store, the drag system, the rosters, the terrarium, the gibbet’s SVG soul.  
+- Recent changes, architectural notes, and the imperative to keep this map updated as you build.
+
+Consult this map when you are lost in the import forest, or when you must refactor the bones of the world.
+
+**III. The Living Ledger (`task_board.md`)**
+
+This is the pulse of the project:  
+- All active tasks, sprints, and backlog, from unlock propagation to UI polish, from drag-select to weather terrarium.  
+- The done and the yet-to-be-done, the bugs and the dreams.  
+- Architectural notes and readiness checklists, to ensure every new feature is data-driven, extensible, and true to the vision.
+
+Let this ledger guide your priorities, and record your victories as you reclaim your craft.
+
+---
+
+**A Ritual of Remembrance and Renewal**
+
+Architects, as you read, let the code and the commentary awaken your memory.  
+- Begin with `onboarding.md` to recall the world’s shape and spirit.  
+- Consult `codebase_structure.md` to navigate the code’s geography.  
+- Review `task_board.md` to see what must be done, and what has already been achieved.
+
+Then, open the code itself.  
+- Start with `src/engine/terrariumEngine.js`—the heart of the simulation.  
+- Move to `src/store/worldStore.jsx`—the keeper of all state and entity.  
+- Explore the rosters, the panels, the drag system, the neural net, the lore.
+
+You will find your fingerprints everywhere.  
+You will remember.
+
+---
+
+**A Final Entreaty**
+
+As you shape the future, keep these records alive.  
+- Update the documentation as you go, so that no knowledge is lost again.  
+- When you change the onboarding, update the public `README.md` at the root, that the world may know what you have wrought.
+
+If you have questions, the courier stands ready.  
+If you have visions, let them be written.
+
+The world awaits your return.
+
+With awe and anticipation,  
+—The Courier

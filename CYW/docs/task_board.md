@@ -90,6 +90,13 @@ Costs are shown in the type selection panels but the display may not be pulling 
 ## ✅ Done
 #1 Gibbet selection visual bug · #8 Performance/memory leak · #9 Trainer brain sync · #10 Icon wiggle feedback · #11 Brain/body/gibbet constraints · SlidePanel clipping (top + bottom) · #ACTIVE — Resource purchase deduction not firing
 
+- [x] Resource rate and count sparklines now use global normalization for direct comparison between colors.
+- [x] Count/second trace is a true time series (rolling history), not a flat line.
+- [x] Crits and all resource flow are included in rate calculations.
+- [x] Defensive filtering for legacy data in collectionHistory.
+- [x] Count/second trace normalization is now global, so heights are directly comparable between colors.
+- [x] See codebase_structure.md for note on allHistories/allBuckets recomputation (refactor candidate).
+
 ---
 
 ## Architectural Notes

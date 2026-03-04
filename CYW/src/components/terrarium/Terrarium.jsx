@@ -164,6 +164,9 @@ export default function Terrarium({
   }, [onPurchaseHandler]);
 
   // Resource counters UI (for left sidebar)
+  // --- Count/second history for sparkline ---
+  // One array per color, rolling window of BUCKETS values
+  const countHistoryRef = useRef(COLORS.map(() => Array(240).fill(0)));
   useEffect(() => {
     if (onResourceCounters) {
       const rates = gsRef.current ? getResourceRate(gsRef.current) : {};
@@ -178,25 +181,132 @@ export default function Terrarium({
         style.innerHTML = `@keyframes floatIcon { 0% { transform: translateY(-1px); } 50% { transform: translateY(1px); } 100% { transform: translateY(-1px); } }`;
         document.head.appendChild(style);
       }
+      // Compute global max for rate normalization (across all rates)
+      const now = Date.now();
+      const WINDOW_MS = 24000; 
+      const BUCKETS = 240; // Higher resolution, twice as many data points
+      // Ensure we have enough history to fill the graph: pad with old timestamps if needed
+
+      // --- Update count/second history for each color ---
+      COLORS.forEach((c, ci) => {
+        const arr = countHistoryRef.current[ci];
+        // Push new value, keep length BUCKETS
+        arr.push(rates[c.id] || 0);
+        if (arr.length > BUCKETS) arr.shift();
+      });
+
+      // Build all histories for normalization
+      // Defensive: filter out any non-object entries in collectionHistory
+      const allHistories = COLORS.map(c => (gsRef.current?.collectionHistory?.[c.id] || []).filter(e => e && typeof e === 'object' && 'time' in e));
+      // Build all bucket arrays for rates
+      const allBuckets = COLORS.map((c, ci) =>
+        Array.from({ length: BUCKETS }, (_, bi) => {
+          const t0 = now - WINDOW_MS + (bi / BUCKETS) * WINDOW_MS;
+          const t1 = now - WINDOW_MS + ((bi + 1) / BUCKETS) * WINDOW_MS;
+          return allHistories[ci]
+            .filter(e => e.time >= t0 && e.time < t1)
+            .reduce((sum, e) => sum + (e.amount ?? 1), 0);
+        })
+      );
+      // Find the global max bucket value for rate normalization
+      const globalMaxRateBucket = Math.max(1, ...allBuckets.flat());
+      // Find the global max countPerSecond across all colors for global scaling
+      const globalMaxCountPerSecond = Math.max(0.01, ...countHistoryRef.current.flat());
+      // Now render each color's graph
       onResourceCounters(
         <div style={{ width: "100%", maxWidth: 320, margin: "0 auto 18px auto", display: "flex", flexDirection: "column", gap: 8 }}>
-          {COLORS.map((c, i) => (
-            <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 0 }}>
-              <span style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "flex-end", marginRight: 4 }}>
-                <span style={{ display: "inline-block", ...floatAnim, animationDelay: `${i * 0.33}s` }}>
-                  <svg width={44} height={44} viewBox="-22 -22 44 44" style={{ overflow: "visible", verticalAlign: "middle" }}>
-                    <Resource r={{ colorId: c.id, x: 0, y: 0, state: "active" }} />
+          {COLORS.map((c, i) => {
+            // Defensive: filter out any non-object entries
+            const history = (gsRef.current?.collectionHistory?.[c.id] || []).filter(e => e && typeof e === 'object' && 'time' in e);
+            // Rate buckets
+            const buckets = Array.from({ length: BUCKETS }, (_, bi) => {
+              const t0 = now - WINDOW_MS + (bi / BUCKETS) * WINDOW_MS;
+              const t1 = now - WINDOW_MS + ((bi + 1) / BUCKETS) * WINDOW_MS;
+              return history
+                .filter(e => e.time >= t0 && e.time < t1)
+                .reduce((sum, e) => sum + (e.amount ?? 1), 0);
+            });
+            const SW = 200, SH = 14;
+            // Count trace (ghostly, now a sparkline of count/second history)
+            const countHistory = countHistoryRef.current[i];
+            // Normalize against the global max for all colors (global scaling)
+            const countPts = countHistory.map((v, bi) => {
+              const x = (bi / (BUCKETS - 1)) * SW;
+              // Normalise y against global max count/second
+              const y = SH - (v / globalMaxCountPerSecond) * SH;
+              return `${x},${y}`;
+            }).join(" ");
+            // Rate sparkline (normalized globally)
+            const sparkPts = buckets.map((v, bi) => {
+              const x = (bi / (BUCKETS - 1)) * SW;
+              // Normalise y against global max rate
+              const y = SH - (v / globalMaxRateBucket) * SH;
+              return `${x},${y}`;
+            }).join(" ");
+            const hasActivity = history.some(e => now - e.time < WINDOW_MS);
+            return (
+              <div key={c.id} style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                {/* Counter row */}
+                <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+                  <span style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "flex-end", marginRight: 4 }}>
+                    <span style={{ display: "inline-block", ...floatAnim, animationDelay: `${i * 0.33}s` }}>
+                      <svg width={44} height={44} viewBox="-22 -22 44 44" style={{ overflow: "visible", verticalAlign: "middle" }}>
+                        <Resource r={{ colorId: c.id, x: 0, y: 0, state: "active" }} />
+                      </svg>
+                    </span>
+                  </span>
+                  <span style={{ color: c.hex, fontWeight: 600, fontSize: 14, display: "flex", alignItems: "center" }}>{snap.collections[c.id]}</span>
+                  <span style={{ color: "#7dd3fc", fontSize: 12, fontWeight: 500, marginLeft: 4 }}>{rates[c.id] ? rates[c.id].toFixed(2) : "0.00"}/s</span>
+                </div>
+                {/* Sparkline row */}
+                <div style={{ paddingLeft: 48, paddingRight: 4 }}>
+                  <svg
+                    width="100%"
+                    height={SH}
+                    viewBox={`0 0 ${SW} ${SH}`}
+                    preserveAspectRatio="none"
+                    style={{ display: "block", opacity: hasActivity ? 1 : 0.15 }}
+                  >
+                    {/* Filled area beneath line */}
+                    <defs>
+                      <linearGradient id={`spark-fill-${c.id}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={c.hex} stopOpacity="0.18" />
+                        <stop offset="100%" stopColor={c.hex} stopOpacity="0.01" />
+                      </linearGradient>
+                    </defs>
+                    <polygon
+                      points={`0,${SH} ${sparkPts} ${SW},${SH}`}
+                      fill={`url(#spark-fill-${c.id})`}
+                    />
+                    {/* Count trace (ghostly, now a live feed of count/second, globally scaled) */}
+                    <polyline
+                      points={countPts}
+                      fill="none"
+                      stroke={c.hex}
+                      strokeWidth="1.1"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                      opacity="0.22"
+                    />
+                    {/* Rate trace (main, global scaling) */}
+                    <polyline
+                      points={sparkPts}
+                      fill="none"
+                      stroke={c.hex}
+                      strokeWidth="1.2"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                      opacity="0.7"
+                    />
                   </svg>
-                </span>
-              </span>
-              <span style={{ color: c.hex, fontWeight: 600, fontSize: 14, display: "flex", alignItems: "center" }}>{snap.collections[c.id]}</span>
-              <span style={{ color: "#7dd3fc", fontSize: 12, fontWeight: 500, marginLeft: 4 }}>{rates[c.id] ? rates[c.id].toFixed(2) : "0.00"}/s</span>
-            </div>
-          ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       );
     }
-  }, [snap.collections, snap.now, onResourceCounters]);
+  }, [snap.collections, onResourceCounters]);
 
   // Add centered float animation to document head if not present
   useEffect(() => {

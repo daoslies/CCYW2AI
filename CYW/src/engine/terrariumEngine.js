@@ -249,7 +249,7 @@ function tickGibbet(gs, g, gibbetId, network, now, dt) {
                 amount = Math.round(amount * 1.5);
               }
               gs.collections[g.target.colorId] += amount;
-              gs.collectionHistory[g.target.colorId].push(now);
+              gs.collectionHistory[g.target.colorId].push({ time: now, amount });
               gs.total++; gs.correct++;
               g.state = "happy"; g.happyUntil = now + 750;
               g._lastGain = {
@@ -371,7 +371,7 @@ export function gameTick(gs, gibbetEntries, UPGRADES_LIST) {
   gs.sparkles = gs.sparkles.filter(s => now - s.born < 600);
   // Prune collection history to last 60s
   for (const col of COLORS) {
-    gs.collectionHistory[col.id] = gs.collectionHistory[col.id].filter(ts => now - ts < 60000);
+    gs.collectionHistory[col.id] = gs.collectionHistory[col.id].filter(e => now - e.time < 60000);
   }
 }
 
@@ -442,10 +442,16 @@ export function getCollectionMultiplier(bodyTypeId, collectedColorId, indicatorC
 // Helper to get resource rate per second for each color
 export function getResourceRate(gs) {
   const now = Date.now();
+  const WINDOW_MS = 60000;
   const rates = {};
   for (const col of COLORS) {
     const arr = gs.collectionHistory[col.id] || [];
-    rates[col.id] = arr.length / 60;
+    if (arr.length === 0) { rates[col.id] = 0; continue; }
+    const oldest = arr[0].time;
+    const elapsed = Math.min(now - oldest, WINDOW_MS);
+    const windowSecs = Math.max(elapsed / 1000, 1);
+    const totalAmount = arr.reduce((sum, e) => sum + (e.amount ?? 1), 0);
+    rates[col.id] = totalAmount / windowSecs;
   }
   return rates;
 }

@@ -61,6 +61,13 @@ This document provides a concise mapping of the main files and their key functio
 - /src/components/terrarium/Terrarium2.jsx: Terrarium2 (main export), 3D terrarium, imports useWorld, @react-three/fiber, @react-three/cannon, @react-three/drei, leva, Ground, Player, Trees, Rocks, Water, COLORS.
 - /src/components/terrarium/TerrariumScene.jsx: TerrariumScene (main export), visualizes terrarium, imports COLORS, engine/terrariumEngine, useWorld, Gibbet, Resource, Sparkle.
 
+## Terrarium resource sparklines (March 4, 2026)
+- Resource rate and count sparklines use global normalization for direct comparison between colors.
+- Count/second trace is a rolling time series, not a flat line.
+- Crits and all resource flow are included in rate calculations.
+- Defensive filtering for legacy data in collectionHistory.
+- Note: allHistories and allBuckets are computed for global normalization, then recomputed per-color in COLORS.map. This is functionally redundant and could be cleaned up in a future refactor.
+
 ## data/
 - /src/data/colors.js: COLORS array, decodeOutput function.
 - /src/data/gibbet_breeds.js: GIBBET_BREEDS array.
