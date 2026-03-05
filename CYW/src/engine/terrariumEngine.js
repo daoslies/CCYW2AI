@@ -247,9 +247,9 @@ function tickGibbet(gs, g, gibbetId, network, brain, body, now, dt) {
               if (g.target.colorId === "green") bonus = gs._greenGatherBonus || 0;
               if (g.target.colorId === "blue")  bonus = gs._blueGatherBonus || 0;
               // Use body.typeId from body object
-              console.log('body object for gibbet', gibbetId, body);
-              console.log('Collecting', g.target.colorId, 'with bonus', bonus, 'and multiplier', multiplier);
-              console.log('checking multiplier for bodyTypeId', bodyTypeId, 'targetColorId', g.target.colorId, 'indicatorId', gs.indicator.id);
+              //console.log('body object for gibbet', gibbetId, body);
+              //console.log('Collecting', g.target.colorId, 'with bonus', bonus, 'and multiplier', multiplier);
+              //console.log('checking multiplier for bodyTypeId', bodyTypeId, 'targetColorId', g.target.colorId, 'indicatorId', gs.indicator.id);
               let amount = (1 + bonus) * body_multiplier;
               let crit = false;
               if (gs._criticalGather && Math.random() < gs._criticalGather) {
