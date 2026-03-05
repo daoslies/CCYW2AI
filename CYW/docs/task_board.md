@@ -6,8 +6,15 @@ This document tracks current issues, feature requests, and improvements for the 
 
 ## ✅ Completed
 
-###  Unlock upgrades not propagating to buy menus
+### Unlock upgrades not propagating to buy menus
 Upgrade panel sets unlock on engine state (gs), rosters read from world store. Fix: mirror unlock flags into worldStore when upgrade is purchased. (Resolved, working as intended.)
+
+### #2 — Body types with resource multipliers (2026-03-05)
+- Refactored engine and UI to use full body/brain objects in gibbet state and gibbetEntries.
+- Body multipliers are now applied directly in resource collection logic (tickGibbet), using body.typeId and multipliers from BODY_TYPES.
+- Removed legacy meta/typeId indirection; all lookups are explicit and robust.
+- Defensive checks prevent crashes on gibbet/brain/body deletion.
+- All architectural and codebase structure docs updated accordingly.
 
 ---
 
@@ -152,3 +159,4 @@ Costs are shown in the type selection panels but the display may not be pulling 
 ## the g.meta, looks to have been half implemented, but not finished.
 
 ### Properly implemnenting g.meta, will enable body type multipliers to work, and will also set us up for future body type synergies and interactions that go beyond simple multipliers.
+

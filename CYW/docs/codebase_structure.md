@@ -1,6 +1,6 @@
 # Codebase Structure and Key Functions
 
-_Last updated: 2026-03-03 03:30 UTC_
+_Last updated: 2026-03-05 02:21 UTC_
 
 This document provides a concise mapping of the main files and their key functions/components, to help understand the codebase structure and imports during refactoring. All filepaths are relative to `/src/`.
 
@@ -70,6 +70,11 @@ This document provides a concise mapping of the main files and their key functio
 - Resource rate calculation (getResourceRate) uses a fixed 10s window for rate display. This ensures the rate number is always recent and responsive to upgrades. The 60s history for sparklines is unchanged. (2026-03-04)
 - Resource rate display (updateAndGetResourceRate) now uses an exponential moving average (EMA) for smooth, persistent, and responsive feedback. (2026-03-04)
 - Note: allHistories/allBuckets are still recomputed per-color in the sparklines; see task_board.md for refactor note. (2026-03-04)
+
+## Terrarium Engine & Resource Multipliers (2026-03-05)
+- /src/engine/terrariumEngine.js: Core simulation logic. Now uses full body and brain objects in gibbet state and gibbetEntries. Resource collection multipliers are applied directly from BODY_TYPES via body.typeId. Defensive checks prevent crashes if a gibbet's brain or body is missing.
+- /src/components/terrarium/Terrarium.jsx: Main simulation UI. Now constructs gibbetEntries with full body and brain objects, passing them to the engine. Defensive against missing entities. No legacy meta/typeId indirection remains.
+- /src/data/bodyTypes.js: BODY_TYPES array, each with multipliers for resource collection. Used directly in engine logic.
 
 ## data/
 - /src/data/colors.js: COLORS array, decodeOutput function.
