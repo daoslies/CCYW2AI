@@ -378,6 +378,7 @@ export default function App() {
           trainerBrain={trainerBrain}
           trainerNetwork={trainerNetwork}
           indicator={indicator}
+          terrariumIndicator={terrariumIndicator}
           view={view}
           networkUpdateTick={networkUpdateTick}
           terrariumResourceCounters={terrariumResourceCounters}

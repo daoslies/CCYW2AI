@@ -8,7 +8,7 @@ export const UPGRADES = [
     label: "Gibbet Speed",
     description: "Increases gibbet walking speed by 20% per level.",
     cost: (level) => ({ red: 0, green: 0, blue: 3 * (level + 1) }), // Lowered cost
-    maxLevel: 5,
+    maxLevel: 10,
     apply: (gs, level) => {
       gs._speedBonus = (gs._speedBonus || 0) + 0.2 * level;
     }

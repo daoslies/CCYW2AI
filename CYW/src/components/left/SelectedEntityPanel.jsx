@@ -26,6 +26,14 @@ export default function SelectedEntityPanel() {
     if (!gibbet) return null;
     const brain = brains.find(b => b.id === gibbet.brainId);
     const body  = bodies.find(b => b.id === gibbet.bodyId);
+    if (!body) {
+      // Defensive: body missing, show fallback or warning
+      return (
+        <div style={{ color: '#f87171', padding: 16 }}>
+          Body not found for this gibbet.
+        </div>
+      );
+    }
     const network = brain ? getNetwork(brain.id) : null;
     const simState = simStates?.[gibbet.id];
     const assignedSlots = Object.entries(assignments)

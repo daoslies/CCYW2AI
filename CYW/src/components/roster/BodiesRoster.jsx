@@ -10,6 +10,7 @@ import { BODY_TYPES } from "../../data/bodyTypes.js";
 import { SlidePanel, PanelHeader } from "../shared/SlidePanel.jsx";
 import { BodyTypeCard } from "./BodyTypeCard.jsx";
 import { UI_ZOOM } from "../../constants.js";
+import { useDrag } from "../../store/dragStore.jsx";
 
 function MultiplierBars({ multipliers }) {
   const COLORS_ORDER = ["red", "green", "blue"];
@@ -43,6 +44,7 @@ export default function BodiesRoster({ onDragStart, setDraggingBody, onResourceD
   const { selected, select } = useSelection();
   const [showTypeSelect, setShowTypeSelect] = useState(false);
   const [selectedTypeId, setSelectedTypeId] = useState("balanced");
+  const { wasDragRef } = useDrag();
 
   // Always re-render when unlock state changes
   useEffect(() => {
@@ -138,7 +140,10 @@ export default function BodiesRoster({ onDragStart, setDraggingBody, onResourceD
           <div
             key={body.id}
             className={"roster-item" + (isSelected ? " selected" : "")}
-            onClick={() => select("body", body.id)}
+            onClick={used ? undefined : (e) => {
+              if (wasDragRef.current || !e.isTrusted || e.defaultPrevented) return; // Only handle real clicks, not drag
+              select("body", body.id);
+            }}
             style={{
               cursor: "pointer",
               background: isSelected ? "#23234a" : undefined,
@@ -162,7 +167,7 @@ export default function BodiesRoster({ onDragStart, setDraggingBody, onResourceD
                   type="body"
                   id={body.id}
                   payload={body}
-                  onDragStart={() => handleDragStart(body)}
+                  onDragStart={() => select("body", body.id)}
                   className="wiggle-brainbody wiggle-brainbody-hover"
                 >
                   <svg width={32} height={32} style={{ display: "block", margin: 0, padding: 0 }}>

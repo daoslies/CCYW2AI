@@ -7,6 +7,7 @@ export default function LeftPanel({
   trainerBrain,
   trainerNetwork,
   indicator,
+  terrariumIndicator,  
   view,
   networkUpdateTick,
   terrariumResourceCounters
@@ -36,7 +37,13 @@ export default function LeftPanel({
         <NetworkViz
           brain={trainerBrain}
           network={trainerNetwork}
-          inputValue={view === "trainer" ? indicator.oneHot : undefined}
+          inputValue={
+            view === "trainer"
+              ? indicator.oneHot
+              : view === "terrarium"
+                ? terrariumIndicator.oneHot
+                : undefined
+          }
           animTrigger={networkUpdateTick}
           style={{ width: "100%", height: "auto", minWidth: 0, aspectRatio: "1.06", display: "block" }}
         />

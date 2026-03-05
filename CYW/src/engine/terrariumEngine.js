@@ -145,14 +145,15 @@ export function applyAllUpgrades(gs, upgradeLevels, UPGRADES) {
   }
 }
 
-// GibbetState: per-gibbet state managed by engine
-function makeGibbetState(meta = {}) {
+// GibbetState: per-gibbet state managed by engine 
+function makeGibbetState() {
   return {
     x: TW / 2, y: GROUND_Y - 68, angle: 0, state: "idle", happyUntil: 0,
     target: null, harvestTarget: null, harvestStarted: null,
     sniffingUntil: null, lastNNTick: 0, poisonedUntil: null,
     harvestProgress: 0,
-    meta,
+    brain: null,
+    body: null,
   };
 }
 
@@ -185,7 +186,7 @@ export function makeGS(upgradeLevels = {}, UPGRADES = [], config = {}) {
 }
 
 // Extracted per-gibbet logic
-function tickGibbet(gs, g, gibbetId, network, now, dt) {
+function tickGibbet(gs, g, gibbetId, network, brain, body, now, dt) {
   if (!network) return;
 
   // --- Confidence multiplier logic ---
@@ -196,11 +197,15 @@ function tickGibbet(gs, g, gibbetId, network, now, dt) {
   const confMult = confidenceMultiplier(network, targetColorId);
   g.lastConfMult = confMult;
 
+  const bodyTypeId = body?.typeId || "balanced";
+  const body_multiplier = getCollectionMultiplier(bodyTypeId, targetColorId, gs.indicator.id);
+
+
   // NN re-evaluation
   if (now - g.lastNNTick > NN_TICK_MS) {
     g.lastNNTick = now;
-    // Use brainTypeId from meta if available
-    const brainTypeId = g.meta?.brainTypeId || "standard";
+    // Use brain.typeId from brain object
+    const brainTypeId = brain?.typeId || "standard";
     evalNN(gs, g, gibbetId, network, brainTypeId);
   }
   // Move gibbet and handle collection
@@ -222,7 +227,7 @@ function tickGibbet(gs, g, gibbetId, network, now, dt) {
         if (res && res.state === "active") {
           // Mining speed per gibbet (can be upgraded)
           // Use a slower default mining rate and dt in ms
-          const mineRate = (gs.mineSpeed ?? 0.001) * confMult; // health per ms (slower)
+          const mineRate = (gs.mineSpeed ?? 0.001) * confMult * body_multiplier; // health per ms (slower)
           const dtMs = Math.max(1, now - (g._lastHarvestTick || now));
           g._lastHarvestTick = now;
           res.health -= mineRate * dtMs;
@@ -241,10 +246,11 @@ function tickGibbet(gs, g, gibbetId, network, now, dt) {
               if (g.target.colorId === "red")   bonus = gs._redGatherBonus || 0;
               if (g.target.colorId === "green") bonus = gs._greenGatherBonus || 0;
               if (g.target.colorId === "blue")  bonus = gs._blueGatherBonus || 0;
-              // Use bodyTypeId from meta if available
-              const bodyTypeId = g.meta?.bodyTypeId || "balanced";
-              const multiplier = getCollectionMultiplier(bodyTypeId, g.target.colorId, gs.indicator.id);
-              let amount = (1 + bonus) * multiplier;
+              // Use body.typeId from body object
+              console.log('body object for gibbet', gibbetId, body);
+              console.log('Collecting', g.target.colorId, 'with bonus', bonus, 'and multiplier', multiplier);
+              console.log('checking multiplier for bodyTypeId', bodyTypeId, 'targetColorId', g.target.colorId, 'indicatorId', gs.indicator.id);
+              let amount = (1 + bonus) * body_multiplier;
               let crit = false;
               if (gs._criticalGather && Math.random() < gs._criticalGather) {
                 crit = true;
@@ -286,7 +292,7 @@ function tickGibbet(gs, g, gibbetId, network, now, dt) {
         const perpY = dx / d;
         const driftAmp = Math.min(d * 0.15, 12);
         const drift = driftAmp * Math.sin(now * 0.004 + g.x * 0.05);
-        const targetSpeed = (gs.gibbetSpeed ?? 0.04) * confMult * (g.speedVariance ?? 1.0);
+        const targetSpeed = (gs.gibbetSpeed ?? 0.04) * confMult * body_multiplier * (g.speedVariance ?? 1.0);
         const distFactor = Math.min(1, d / 60);
         const nearFactor = Math.min(1, d / COLLECT_DIST / 1.5);
         const speed = targetSpeed * 0.3 + targetSpeed * 0.7 * distFactor * nearFactor;
@@ -354,15 +360,17 @@ export function gameTick(gs, gibbetEntries, UPGRADES_LIST) {
     for (const g of gs.gibbetStates.values()) g.lastNNTick = 0;
   }
   // Tick all assigned gibbets
-  for (const { id, network, meta } of gibbetEntries) {
-    // Defensive: only process real gibbet IDs (numbers)
+  for (const { id, network, brain, body } of gibbetEntries) {
     if (typeof id !== 'number') continue;
     let g = gs.gibbetStates.get(id);
     if (!g) {
-      g = makeGibbetState(meta);
+      g = makeGibbetState();
       gs.gibbetStates.set(id, g);
     }
-    tickGibbet(gs, g, id, network, now, dt);
+    // Keep type objects current each tick — they may change if gibbet is reconfigured
+    g.brain = brain;
+    g.body = body;
+    tickGibbet(gs, g, id, network, brain, body, now, dt);
   }
   // Remove unassigned gibbets from state
   const assignedIds = new Set(gibbetEntries.map(e => e.id));
@@ -432,13 +440,17 @@ export function buildInputVec(gs, brainTypeId = "standard") {
 
 // Get collection multiplier for a body type
 export function getCollectionMultiplier(bodyTypeId, collectedColorId, indicatorColorId) {
+  console.log('running', BODY_TYPES, bodyTypeId, collectedColorId, indicatorColorId);
   const bodyType = BODY_TYPES.find(b => b.id === bodyTypeId);
+
+  console.log('bodyType', bodyType, bodyTypeId);
   if (!bodyType) return 1.0;
   const isCorrect = collectedColorId === indicatorColorId;
   if (!isCorrect && bodyType.multipliers.wrong != null) {
     return bodyType.multipliers.wrong;
   }
-  return bodyType.multipliers[collectedColorId] ?? 1.0;
+  console.log('bodyType.multipliers[collectedColorId]', bodyType, bodyType.multipliers[collectedColorId], collectedColorId);
+  return bodyType.multipliers[collectedColorId] ?? 100.0; // if they start going super hard, you know it's gone wrong
 }
 
 // Helper to update and get resource rate per second for each color (EMA smoothing)
@@ -494,3 +506,7 @@ export function confidenceMultiplier(network, colorId) {
   const raw = confidence / (1 / COLORS.length);
   return Math.max(0.4, Math.min(2.5, raw));
 }
+
+
+// I bet we can reduce how much we're running the network here if we cache the output.
+// we don't need it on every tick, just when the network changes.  (we can cache the output for all three possible inputs)

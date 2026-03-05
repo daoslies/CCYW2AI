@@ -9,6 +9,7 @@ import Gibbet from "../gibbet/Gibbet.jsx";
 import { confidenceMultiplier } from '../../engine/terrariumEngine.js';
 import { nnForward } from '../../engine/nn.js';
 import { useSelection } from "../../store/selectionStore";
+import { useDrag } from "../../store/dragStore.jsx";
 
 const SLOT_LABELS = { t1: "T1", t2: "T2" };
 
@@ -16,6 +17,7 @@ export default function GibbetRoster() {
   const { gibbets, brains, bodies, assignments, assignGibbet, unassignGibbet, dissolveGibbet, simStates, getNetwork, setActiveTrainerId } = useWorld();
   const [confirmingDissolve, setConfirmingDissolve] = useState(null);
   const { selected, select } = useSelection();
+  const { wasDragRef } = useDrag();
 
   function getSlotsForGibbet(gibbetId) {
     return Object.entries(assignments)
@@ -57,7 +59,11 @@ export default function GibbetRoster() {
 
         return (
           <div key={gibbet.id} className={"roster-item" + (isSelected ? " selected" : "")}
-            onClick={() => { select("gibbet", gibbet.id); if (brain) setActiveTrainerId(brain.id); }}
+            onClick={(e) => {
+              if (wasDragRef.current || !e.isTrusted || e.defaultPrevented) return; // Only handle real clicks, not drag
+              select("gibbet", gibbet.id);
+              if (brain) setActiveTrainerId(brain.id);
+            }}
             style={{ cursor: "pointer", background: isSelected ? "#23234a" : undefined }}>
             <DraggableItem
               payload={gibbet}
@@ -66,6 +72,10 @@ export default function GibbetRoster() {
               disabled={false}
               className="wiggle-gibbet wiggle-gibbet-hover"
               style={{ display: "inline-block", marginRight: 12 }}
+              onDragStart={() => {
+                select("gibbet", gibbet.id);
+                if (setActiveTrainerId) setActiveTrainerId(brain?.id);
+              }}
             >
               <svg width={40} height={44} viewBox="0 0 40 44" style={{ verticalAlign: "middle" }}>
                 <Gibbet x={20} y={22} angle={0} state={simState.state} poisoned={!!(simState.poisonedUntil && simState.now < simState.poisonedUntil)} gainPopups={[]} color={body?.color || gibbet.color} />

@@ -13,6 +13,7 @@ import { BRAIN_TYPES } from "../../data/brainTypes.js";
 import { SlidePanel, PanelHeader } from "../shared/SlidePanel.jsx";
 import { BrainTypeCard } from "./BrainTypeCard.jsx";
 import { UI_ZOOM } from "../../constants.js";
+import { useDrag } from "../../store/dragStore.jsx";
 
 function brainAccuracy(brain) {
   // Dummy: returns 0-1 based on trainCount (replace with real logic)
@@ -45,6 +46,7 @@ export default function BrainsRoster({ onDragStart, onResourceDeduct, injectPane
   const { brains, addBrain, usedBrainIds, activeTrainerId, setActiveTrainerId, getNetwork, weatherBrainUnlocked } = useWorld();
   const { setDraggingItem } = useDragStore();
   const { selected, select } = useSelection();
+  const { wasDragRef } = useDrag();
 
   const [showTypeSelect, setShowTypeSelect] = useState(false);
   const [selectedTypeId, setSelectedTypeId] = useState("standard");
@@ -63,7 +65,7 @@ export default function BrainsRoster({ onDragStart, onResourceDeduct, injectPane
   }, [brains, weatherBrainUnlocked]);
 
   const handleDragStart = (brain) => {
-    setDraggingItem({ type: "brain", payload: brain });
+    if (setDraggingItem) setDraggingItem({ type: "brain", payload: brain });
     if (onDragStart) onDragStart(brain);
   };
 
@@ -145,7 +147,11 @@ export default function BrainsRoster({ onDragStart, onResourceDeduct, injectPane
         const unlocked = getUnlocked(brainType.id);
         return (
           <div key={brain.id} className={"roster-item" + (isSelected ? " selected" : "")}
-            onClick={() => { select("brain", brain.id); setActiveTrainerId(brain.id); }}
+            onClick={(e) => {
+              if (wasDragRef.current || !e.isTrusted || e.defaultPrevented) return; // Only handle real clicks, not drag
+              select("brain", brain.id);
+              setActiveTrainerId(brain.id);
+            }}
             style={{
               cursor: "pointer",
               background: isSelected ? "#23234a" : undefined,
@@ -162,7 +168,10 @@ export default function BrainsRoster({ onDragStart, onResourceDeduct, injectPane
                 type="brain"
                 id={brain.id}
                 payload={brain}
-                onDragStart={() => handleDragStart(brain)}
+                onDragStart={() => {
+                  select("brain", brain.id);
+                  setActiveTrainerId(brain.id);
+                }}
                 className="wiggle-brainbody wiggle-brainbody-hover"
               >
                 <BrainIcon typeId={brainType.id} size={28} />

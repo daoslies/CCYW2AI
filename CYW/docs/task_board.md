@@ -4,10 +4,16 @@ This document tracks current issues, feature requests, and improvements for the 
 
 ---
 
+## ✅ Completed
+
+###  Unlock upgrades not propagating to buy menus
+Upgrade panel sets unlock on engine state (gs), rosters read from world store. Fix: mirror unlock flags into worldStore when upgrade is purchased. (Resolved, working as intended.)
+
+---
+
 ## 🔴 Active / In Progress
 
-### #ACTIVE — Unlock upgrades not propagating to buy menus
-Upgrade panel sets unlock on engine state (gs), rosters read from world store. Fix: mirror unlock flags into worldStore when upgrade is purchased.
+
 
 ---
 
@@ -137,3 +143,12 @@ Costs are shown in the type selection panels but the display may not be pulling 
 ---
 
 (Last updated: 2026-03-03)
+
+
+
+
+#### G in terrarium engine. We are dealing with body type multipliers.
+
+## the g.meta, looks to have been half implemented, but not finished.
+
+### Properly implemnenting g.meta, will enable body type multipliers to work, and will also set us up for future body type synergies and interactions that go beyond simple multipliers.

@@ -71,4 +71,25 @@ Any questions, the courier knows where to find us.
 
 
 
-### Note - Remember to update the main public facing readme.md at the root of this project to match any changes made to this file, whenever changes are made to this file. ### note after someone did this - we do not need to include this note in the public facing version as that version is public facing.
+### Note - Remember to update the main public facing readme.md at the root of this project to match any changes made to this file, whenever changes are made to this file.
+
+
+
+
+### Code notes:
+
+
+This is a really good way to just access the important objects:
+
+  const { selected } = useSelection();
+  const [detailTab, setDetailTab] = useState("live");
+  const { brains, bodies, gibbets, assignments, getNetwork, simStates } = useWorld();
+
+  if (!selected) return <EmptyState />;
+
+  // --- Gibbet: tabbed detail ---
+  if (selected.type === "gibbet") {
+    const gibbet = gibbets.find(g => g.id === selected.id);
+    if (!gibbet) return null;
+    const brain = brains.find(b => b.id === gibbet.brainId);
+    const body  = bodies.find(b => b.id === gibbet.bodyId);

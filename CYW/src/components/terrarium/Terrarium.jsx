@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { COLORS } from "../../data/colors.js";
 import { makeNetwork, nnTrainStep } from "../../engine/nn";
-import NetworkViz from "../shared/NetworkViz.jsx";
 import { UPGRADES } from "../../data/upgrades.js";
 import { 
   makeGS, 
@@ -34,7 +33,7 @@ export default function Terrarium({
   onPurchaseHandler
 }) {
   // UseWorld instead of useGibbets
-  const { assignments, gibbets, brains, getNetwork, updateGibbetMeta, activeTrainerId, assignGibbet, unassignGibbet, simStates, updateSimState, setWeatherBrainUnlocked, unlockBodyType } = useWorld();
+  const { assignments, gibbets, brains, bodies, getNetwork, updateGibbetMeta, activeTrainerId, assignGibbet, unassignGibbet, simStates, updateSimState, setWeatherBrainUnlocked, unlockBodyType } = useWorld();
   // Defensive: assignments, gibbets, brains may be empty
   const gibbetIds = assignments?.[slot] || [];
   const gibbetEntriesRef = useRef([]);
@@ -45,8 +44,18 @@ export default function Terrarium({
     .map(id => {
       const gibbet = gibbets.find(g => g.id === id);
       const brain = gibbet?.brainId != null ? brains.find(b => b.id === gibbet.brainId) : null;
+      if (!brain) return null; // Defensive: brain may be missing after gibbet deletion
       const network = brain ? getNetwork(brain.id) : null;
-      return gibbet && brain && network ? { id: gibbet.id, brain, network } : null;
+      if (!network) return null; // Defensive: network may be missing
+      brain.network = network; // attach network for easy access in gameTick /// TODO: consider normalizing this in worldStore for efficiency and also may be changes in gametick that need accounting for. (they may still refer to network rather than brain.network, so maybe we should just ensure worldStore always has brain.network available.)
+      const body = gibbet ? bodies.find(b => b.id === gibbet.bodyId) : null;
+      if (!body) return null; // Defensive: body may be missing
+      return gibbet && brain && network && body ? {
+        id: gibbet.id,
+        brain,
+        body,
+        network,
+      } : null;
     })
     .filter(Boolean);
 
@@ -86,9 +95,11 @@ export default function Terrarium({
     function tick() {
       if (!running) return;
 
+      console.log();//'gibbetEntriesRef.current', gibbetEntriesRef.current);
+
       gameTick(
         gsRef.current,
-        gibbetEntriesRef.current.map(e => ({ id: e.id, network: e.network })),
+        gibbetEntriesRef.current.map(e => ({ id: e.id, network: e.network, body: e.body })),
         UPGRADES,
         config
       );
@@ -491,20 +502,6 @@ export default function Terrarium({
       unlockBodyType("inverter");
     }
   }
-
-  // Bodies array and roster UI
-  const [bodies, setBodies] = useState(() => [
-    // Starter body template
-    { id: 0, name: "Basic Body", template: "default", color: "#7dd3fc", createdAt: Date.now() }
-  ]);
-
-  // Add body function
-  const addBody = (name, template = "default", color = "#7dd3fc") => {
-    const id = bodies.length > 0 ? Math.max(...bodies.map(b => b.id)) + 1 : 0;
-    const body = { id, name, template, color, createdAt: Date.now() };
-    setBodies(prev => [...prev, body]);
-    return id;
-  };
 
   // Defensive: selectedGibbetId may not be defined, so default to null
   const selectedGibbetId = null; // TODO: wire up selection logic from context/store if needed
