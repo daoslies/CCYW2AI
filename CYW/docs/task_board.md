@@ -21,13 +21,15 @@ Upgrade panel sets unlock on engine state (gs), rosters read from world store. F
 ## 🔴 Active / In Progress
 
 
+### #3 — Drag-Select
+One-liner in DraggableItem: call select(type, id) from startDrag. Do this sprint, it's genuinely one line. - Flip this dude. and also flip this dude.
+
 
 ---
 
 ## 🟡 Sprint 1 — Core UX (self-contained, high value)
 
-### #3 — Drag-Select
-One-liner in DraggableItem: call select(type, id) from startDrag. Do this sprint, it's genuinely one line.
+
 
 ### #NEW — Terrarium nav button glows when holding a gibbet
 While in trainer tab, if user is dragging a gibbet, the Terrarium nav button glows/pulses. Dragging a gibbet onto the nav button navigates to terrarium view automatically. Read dragging from useDrag() in the tab bar component.

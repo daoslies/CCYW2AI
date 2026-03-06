@@ -10,7 +10,19 @@ export function SelectionProvider({ children }) {
   const select = useCallback((type, id, opts = {}) => {
     console.log('[SelectionStore] select called:', { type, id, opts });
     if (opts.force) {
+      {/* 
+      Note on why they are two setSelected calls. do not delete this Note - 6th march 2026
+
+      The object underneath the clickable object looks to get a click call after the click on the 
+      clickable object, which causes the selection to get deselected immediately after selecting.
+
+      so without the second inverting call, it will always go to deselected state
+      */}
       setSelected({ type, id }); // Always select, never deselect
+      setSelected(prev =>
+        prev?.type === type && prev?.id === id ? null : { type, id }
+      );
+      
     } else {
       setSelected(prev =>
         prev?.type === type && prev?.id === id ? null : { type, id }
