@@ -27,7 +27,7 @@ export default function RightPanel({
   const { assignments, unassignGibbet } = useWorld();
   const { dragging } = useDragStore(); // was draggingItem
 
-  console.log("RightPanel render - dragging:", dragging);
+
 
   const draggingBrainItem = dragging?.type === "brain" ? dragging.payload : null;
   const draggingBodyItem = dragging?.type === "body" ? dragging.payload : null;
@@ -53,26 +53,8 @@ export default function RightPanel({
         maxHeight: "100vh",
         overflowY: "auto"
       }}>
-        {/* Tab buttons */}
+        {/* Tab buttons - Gibbets first, then Upgrades */}
         <div style={{ display: "flex", gap: 0, width: "100%", marginBottom: 18 }}>
-          <button
-            onClick={() => setRightTab("upgrades")}
-            style={{
-              flex: 1,
-              padding: "10px 0",
-              border: "none",
-              borderBottom: rightTab === "upgrades" ? "3px solid #60a5fa" : "1px solid #222",
-              background: rightTab === "upgrades" ? "#181a22" : "#10101a",
-              color: rightTab === "upgrades" ? "#60a5fa" : "#aaa",
-              fontWeight: 600,
-              fontSize: 15,
-              cursor: "pointer",
-              borderTopLeftRadius: 12,
-              borderTopRightRadius: 0
-            }}
-          >
-            Upgrades
-          </button>
           <button
             onClick={() => setRightTab("gibbets")}
             style={{
@@ -85,11 +67,29 @@ export default function RightPanel({
               fontWeight: 600,
               fontSize: 15,
               cursor: "pointer",
+              borderTopLeftRadius: 12,
+              borderTopRightRadius: 0
+            }}
+          >
+            Grow Gibbets
+          </button>
+          <button
+            onClick={() => setRightTab("upgrades")}
+            style={{
+              flex: 1,
+              padding: "10px 0",
+              border: "none",
+              borderBottom: rightTab === "upgrades" ? "3px solid #60a5fa" : "1px solid #222",
+              background: rightTab === "upgrades" ? "#181a22" : "#10101a",
+              color: rightTab === "upgrades" ? "#60a5fa" : "#aaa",
+              fontWeight: 600,
+              fontSize: 15,
+              cursor: "pointer",
               borderTopLeftRadius: 0,
               borderTopRightRadius: 12
             }}
           >
-            Grow Gibbets
+            Upgrades
           </button>
         </div>
         {/* Tab content */}

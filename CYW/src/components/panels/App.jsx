@@ -356,7 +356,8 @@ export default function App() {
   const terrariumRef = useRef();
   const terrarium2Ref = useRef();
 
-  const [rightTab, setRightTab] = useState("upgrades"); // "upgrades" or "gibbets"
+  // Set default rightTab to 'gibbets'
+  const [rightTab, setRightTab] = useState("gibbets"); // "gibbets" or "upgrades"
 
   const [purchaseHandler, setPurchaseHandler] = useState(null);
 
@@ -448,7 +449,7 @@ export default function App() {
               cursor: "pointer",
               // Add glow if dragging a gibbet
               boxShadow:
-                dragging && dragging.type === "gibbet"
+                view === "trainer" && dragging && dragging.type === "gibbet"
                   ? "0 0 12px 4px #4ade80, 0 0 2px #22c55e"
                   : undefined,
               transition: "box-shadow 0.18s, background 0.18s, border 0.18s, color 0.18s",

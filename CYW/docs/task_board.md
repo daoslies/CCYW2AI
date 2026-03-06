@@ -25,12 +25,15 @@ One-liner in DraggableItem: call select(type, id) from startDrag. Do this sprint
 - Uses shared drag context, robust to context/provider issues.
 - Feature complete and visually confirmed.
 
+- [x] Refactor and debug body/brain type handling for gibbets in the terrarium engine, ensure body multipliers affect resource collection as intended (5 Mar 2026)
+- [x] Remove legacy indirection (meta/typeId fields), use explicit body/brain objects (5 Mar 2026)
+- [x] Clean up legacy state in Terrarium.jsx (6 Mar 2026)
+- [x] Terrarium nav button glows when holding a gibbet (dragging), and auto-navigates to Terrarium when hovered during drag (6 Mar 2026)
+- [x] Swap right panel tab order so "Grow Gibbets" is first and default (6 Mar 2026)
+
 ---
 
 ## 🔴 Active / In Progress
-
-### #NEW — Swap right panel tab order + default to Grow Gibbets
-Move Grow Gibbets tab before Upgrades. Make it the default. This is the correct new user journey: land on trainer → see brain roster immediately → train → grow → terrarium.
 
 ### #NEW — Grow Gibbets progressive unlock
 On first load, only the Brains section is active. Bodies and Gibbets sections are greyed/locked until the first brain has been trained at least once. Simple trainCount > 0 check.
