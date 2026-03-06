@@ -1,0 +1,17 @@
+.roster-item {
+  position: relative;
+}
+.roster-item .roster-actions {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.roster-item:hover .roster-actions,
+.roster-item:focus-within .roster-actions {
+  opacity: 1;
+  pointer-events: auto;
+}

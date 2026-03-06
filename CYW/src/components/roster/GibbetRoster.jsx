@@ -11,6 +11,7 @@ import { nnForward } from '../../engine/nn.js';
 import { useSelection } from "../../store/selectionStore";
 import { useDrag } from "../../store/dragStore.jsx";
 import { generateGibbetName } from '../../data/gibbetNames.js';
+import "../../styles/roster-actions.css";
 
 const SLOT_LABELS = { t1: "T1", t2: "T2" };
 
@@ -57,216 +58,104 @@ export default function GibbetRoster() {
         const brain = brains.find(b => b.id === gibbet.brainId);
         const body  = bodies.find(b => b.id === gibbet.bodyId);
         const simState = simStates[gibbet.id] || { state: gibbet.state || "idle", poisonedUntil: gibbet.poisoned ? Date.now() + 10000 : 0, now: Date.now() };
-        const isConfirming = confirmingDissolve === gibbet.id;
-        const isAssigned = assignedSlots.length > 0;
         const isSelected = selected?.type === "gibbet" && selected?.id === gibbet.id;
-
-        // Confidence/speed bars for all resource colors
-        let confMults = [];
-        if (brain) {
-          const network = getNetwork(brain.id);
-          if (network) {
-            confMults = COLORS.map(c => ({
-              color: c,
-              mult: confidenceMultiplier(network, c.id)
-            }));
-          }
-        }
-        // fallback: show 1.0 for all if not available
-        if (confMults.length === 0) {
-          confMults = COLORS.map(c => ({ color: c, mult: 1.0 }));
-        }
+        const isConfirming = confirmingDissolve === gibbet.id;
 
         return (
           <div key={gibbet.id} className={"roster-item" + (isSelected ? " selected" : "")}
             onClick={(e) => {
-              if (wasDragRef.current || !e.isTrusted || e.defaultPrevented) return; // Only handle real clicks, not drag
+              if (wasDragRef.current || !e.isTrusted || e.defaultPrevented) return;
               select("gibbet", gibbet.id);
               if (brain) setActiveTrainerId(brain.id);
             }}
-            style={{ cursor: "pointer", background: isSelected ? "#23234a" : undefined }}>
+            style={{ cursor: "pointer", background: isSelected ? "#23234a" : undefined, display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
             <DraggableItem
               payload={gibbet}
               type="gibbet"
               id={gibbet.id}
               disabled={false}
               className="wiggle-gibbet wiggle-gibbet-hover"
-              style={{ display: "inline-block", marginRight: 12 }}
+              style={{ display: "inline-block", marginRight: 0 }}
               onDragStart={() => {
                 select("gibbet", gibbet.id);
                 if (setActiveTrainerId) setActiveTrainerId(brain?.id);
               }}
             >
-              <svg width={40} height={44} viewBox="0 0 40 44" style={{ verticalAlign: "middle" }}>
+              <svg width={32} height={36} viewBox="0 0 40 44" style={{ verticalAlign: "middle" }}>
                 <Gibbet x={20} y={22} angle={0} state={simState.state} poisoned={!!(simState.poisonedUntil && simState.now < simState.poisonedUntil)} gainPopups={[]} color={body?.color || gibbet.color} />
               </svg>
             </DraggableItem>
-            <RosterItem key={gibbet.id}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ color: R.textPrimary, fontSize: R.fontMd, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {editingId === gibbet.id ? (
-                    <input
-                      autoFocus
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
-                      onBlur={() => { updateName(); }}
-                      onKeyDown={e => { if (e.key === 'Enter') updateName(); if (e.key === 'Escape') cancelEdit(); }}
-                      style={{ fontSize: R.fontMd, fontWeight: 500, width: 90, borderRadius: 4, border: '1px solid #444', padding: '2px 6px' }}
-                    />
-                  ) : (
-                    <span
-                      style={{ cursor: 'pointer', userSelect: 'text' }}
-                      title={gibbet.name}
-                    >
-                      {gibbet.name}
-                    </span>
-                  )}
-                  <button
-                    tabIndex={-1}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, marginLeft: 2 }}
-                    title="Edit name"
-                    onClick={e => { e.stopPropagation(); setEditingId(gibbet.id); setEditValue(gibbet.name); }}
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    tabIndex={-1}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, marginLeft: 2 }}
-                    title="Regenerate name"
-                    onClick={e => { e.stopPropagation(); regenerateName(gibbet.id); }}
-                  >
-                    🎲
-                  </button>
-                </div>
-                <div style={{ color: R.textMuted, fontSize: R.fontSm, marginTop: 1 }}>
-                  {brain?.name ?? "?"} · {body?.name ?? "?"}
-                </div>
-                {/* Input→Output mapping with confidence and multiplier */}
-                {brain && (() => {
-                  const network = getNetwork(brain.id);
-                  if (!network) return null;
-
-                  return (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 4 }}>
-                      {COLORS.map(inputColor => {
-                        const probs = nnForward(network, inputColor.oneHot);
-                        const maxIdx = probs.indexOf(Math.max(...probs));
-                        const outputColor = COLORS[maxIdx];
-                        const confidence = probs[maxIdx];
-                        const mult = confidenceMultiplier(network, inputColor.id);
-                        const isCorrect = outputColor.id === inputColor.id;
-
-                        return (
-                          <div key={inputColor.id} style={{
-                            display: "flex", alignItems: "center", gap: 5,
-                          }}>
-                            {/* Input dot */}
-                            <span style={{
-                              width: 7, height: 7, borderRadius: "50%",
-                              background: inputColor.hex, flexShrink: 0,
-                              boxShadow: `0 0 4px ${inputColor.glow}`,
-                            }} />
-
-                            {/* Arrow */}
-                            <span style={{ color: "#333", fontSize: 9 }}>→</span>
-
-                            {/* Output dot */}
-                            <span style={{
-                              width: 7, height: 7, borderRadius: "50%",
-                              background: outputColor.hex, flexShrink: 0,
-                              boxShadow: `0 0 4px ${outputColor.glow}`,
-                              opacity: 0.4 + confidence * 0.6,
-                            }} />
-
-                            {/* Multiplier — coloured by correctness */}
-                            <span style={{
-                              fontSize: 9, letterSpacing: "0.08em",
-                              color: isCorrect ? "#4ade80" : "#f87171",
-                              fontWeight: 600, minWidth: 28,
-                            }}>
-                              ×{mult.toFixed(2)}
-                            </span>
-
-                            {/* Confidence bar */}
-                            <div style={{
-                              flex: 1, height: 2, borderRadius: 1,
-                              background: "#1a1a2a", overflow: "hidden",
-                            }}>
-                              <div style={{
-                                width: `${confidence * 100}%`,
-                                height: "100%",
-                                background: isCorrect ? "#4ade80" : "#f87171",
-                                transition: "width 0.4s ease",
-                              }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
-                {/* Slot assignment row */}
-                <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap" }}>
-                  {Object.keys(SLOT_LABELS).map(slot => {
-                    const assigned = assignedSlots.includes(slot);
-                    return (
-                      <button
-                        key={slot}
-                        onClick={() => assigned
-                          ? unassignGibbet(slot, gibbet.id)
-                          : assignGibbet(slot, gibbet.id)}
-                        style={{
-                          padding: "2px 8px",
-                          borderRadius: 5,
-                          fontSize: "9px",
-                          letterSpacing: R.tracking,
-                          fontWeight: 600,
-                          border: assigned
-                            ? `1px solid ${R.accentGibbet}66`
-                            : "1px solid #1a1a2a",
-                          background: assigned ? "#0e2018" : R.bgAction,
-                          color: assigned ? R.accentGibbet : R.textMuted,
-                          cursor: "pointer",
-                          fontFamily: "inherit",
-                          textTransform: "uppercase",
-                          transition: "all 0.12s",
-                        }}
-                      >
-                        {SLOT_LABELS[slot]}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              {/* Dissolve — inline confirmation */}
-              {!isConfirming ? (
-                <ActionButton
-                  variant="danger"
-                  size="sm"
-                  onClick={() => setConfirmingDissolve(gibbet.id)}
-                >
-                  ✕
-                </ActionButton>
+            <span style={{ color: R.textPrimary, fontSize: R.fontMd, fontWeight: 500, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'relative', paddingRight: 60 }}>
+              {editingId === gibbet.id ? (
+                <input
+                  autoFocus
+                  value={editValue}
+                  onChange={e => setEditValue(e.target.value)}
+                  onBlur={() => { updateName(); }}
+                  onKeyDown={e => { if (e.key === 'Enter') updateName(); if (e.key === 'Escape') cancelEdit(); }}
+                  style={{ fontSize: R.fontMd, fontWeight: 500, width: 90, borderRadius: 4, border: '1px solid #444', padding: '2px 6px' }}
+                />
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-end" }}>
-                  {isAssigned && (
-                    <span style={{ color: R.statusWarn, fontSize: "8px", letterSpacing: R.tracking }}>
-                      will unassign
-                    </span>
-                  )}
-                  <div style={{ display: "flex", gap: 4 }}>
-                    <ActionButton variant="danger" size="sm"
-                      onClick={() => { dissolveGibbet(gibbet.id); setConfirmingDissolve(null); }}>
-                      confirm
-                    </ActionButton>
-                    <ActionButton size="sm"
-                      onClick={() => setConfirmingDissolve(null)}>
-                      cancel
-                    </ActionButton>
-                  </div>
-                </div>
+                <span
+                  style={{ cursor: 'pointer', userSelect: 'text' }}
+                  title={gibbet.name}
+                >
+                  {gibbet.name}
+                </span>
               )}
-            </RosterItem>
+            </span>
+            <span className="roster-actions" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <button
+                tabIndex={-1}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, marginLeft: 2 }}
+                title="Edit name"
+                onClick={e => { e.stopPropagation(); setEditingId(gibbet.id); setEditValue(gibbet.name); }}
+              >
+                ✏️
+              </button>
+              <button
+                tabIndex={-1}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, marginLeft: 2 }}
+                title="Regenerate name"
+                onClick={e => { e.stopPropagation(); regenerateName(gibbet.id); }}
+              >
+                🎲
+              </button>
+              <ActionButton
+                variant="danger"
+                size="sm"
+                onClick={e => { e.stopPropagation(); setConfirmingDissolve(gibbet.id); }}
+                style={{ marginLeft: 4 }}
+              >
+                ✕
+              </ActionButton>
+            </span>
+            {isConfirming && (
+              <div style={{
+                position: 'absolute',
+                right: 8,
+                top: 36,
+                zIndex: 10,
+                background: '#181825',
+                border: '1px solid #333',
+                borderRadius: 6,
+                padding: '6px 10px',
+                boxShadow: '0 2px 8px #0008',
+                display: 'flex',
+                gap: 6,
+                alignItems: 'center',
+              }}>
+                <span style={{ color: R.statusWarn, fontSize: 11 }}>Confirm?</span>
+                <ActionButton variant="danger" size="sm"
+                  onClick={() => { dissolveGibbet(gibbet.id); setConfirmingDissolve(null); }}>
+                  confirm
+                </ActionButton>
+                <ActionButton size="sm"
+                  onClick={() => setConfirmingDissolve(null)}>
+                  cancel
+                </ActionButton>
+              </div>
+            )}
           </div>
         );
       })}

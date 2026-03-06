@@ -61,6 +61,7 @@ function createGibbet(brainId, bodyId, name = "Gibbet", color) {
     name,
     color,
     createdAt: Date.now(),
+    lifetimeCollections: { red: 0, green: 0, blue: 0 },
   };
 }
 
@@ -128,6 +129,20 @@ export function WorldProvider({ children }) {
     setGibbets(prev => prev.map(g => g.id === id ? { ...g, ...patch } : g));
   }, []);
 
+  // Increments gibbet.lifetimeCollections[colorId] by amount
+  const incrementGibbetLifetimeCollection = useCallback((gibbetId, colorId, amount) => {
+    setGibbets(prev => prev.map(g => {
+      if (g.id !== gibbetId) return g;
+      return {
+        ...g,
+        lifetimeCollections: {
+          ...g.lifetimeCollections,
+          [colorId]: (g.lifetimeCollections?.[colorId] || 0) + amount
+        }
+      };
+    }));
+  }, []);
+
   // Assignments
   const [assignments, setAssignments] = useState({ t1: [], t2: [] });
   const assignGibbet = useCallback((slotId, gibbetId) => {
@@ -163,7 +178,7 @@ export function WorldProvider({ children }) {
     <WorldContext.Provider value={{
       brains, addBrain, getNetwork, updateBrainMeta, usedBrainIds,
       bodies, addBody, usedBodyIds,
-      gibbets, combineGibbet, dissolveGibbet, updateGibbetMeta,
+      gibbets, combineGibbet, dissolveGibbet, updateGibbetMeta, incrementGibbetLifetimeCollection,
       assignments, assignGibbet, unassignGibbet,
       activeTrainerId, setActiveTrainerId,
       simStates, updateSimState,
