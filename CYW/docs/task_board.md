@@ -16,14 +16,27 @@ Upgrade panel sets unlock on engine state (gs), rosters read from world store. F
 - Defensive checks prevent crashes on gibbet/brain/body deletion.
 - All architectural and codebase structure docs updated accordingly.
 
+### #3 — Drag-Select
+One-liner in DraggableItem: call select(type, id) from startDrag. Do this sprint, it's genuinely one line. - Flip this dude. and also flip this dude. - Done it's the inverting call with the note in draggableobject
+
+### #NEW — Terrarium nav button glows and drag-to-navigate (2026-03-06)
+- Terrarium nav button now glows when dragging a gibbet.
+- Dragging a gibbet over the Terrarium button auto-navigates to the terrarium view.
+- Uses shared drag context, robust to context/provider issues.
+- Feature complete and visually confirmed.
+
 ---
 
 ## 🔴 Active / In Progress
 
+### #NEW — Swap right panel tab order + default to Grow Gibbets
+Move Grow Gibbets tab before Upgrades. Make it the default. This is the correct new user journey: land on trainer → see brain roster immediately → train → grow → terrarium.
 
-### #3 — Drag-Select
-One-liner in DraggableItem: call select(type, id) from startDrag. Do this sprint, it's genuinely one line. - Flip this dude. and also flip this dude.
+### #NEW — Grow Gibbets progressive unlock
+On first load, only the Brains section is active. Bodies and Gibbets sections are greyed/locked until the first brain has been trained at least once. Simple trainCount > 0 check.
 
+### #4 + #5 — Gibbet naming + random name generation
+Double-click to rename in the gibbet roster card (inline <input> that commits on blur/enter). generateGibbetName() already written — hook into combineGibbet as default. Add a 🎲 button next to the name field to regenerate.
 
 ---
 
@@ -31,8 +44,7 @@ One-liner in DraggableItem: call select(type, id) from startDrag. Do this sprint
 
 
 
-### #NEW — Terrarium nav button glows when holding a gibbet
-While in trainer tab, if user is dragging a gibbet, the Terrarium nav button glows/pulses. Dragging a gibbet onto the nav button navigates to terrarium view automatically. Read dragging from useDrag() in the tab bar component.
+
 
 ### #NEW — Swap right panel tab order + default to Grow Gibbets
 Move Grow Gibbets tab before Upgrades. Make it the default. This is the correct new user journey: land on trainer → see brain roster immediately → train → grow → terrarium.

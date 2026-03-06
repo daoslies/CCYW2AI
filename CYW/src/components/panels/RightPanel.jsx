@@ -27,6 +27,8 @@ export default function RightPanel({
   const { assignments, unassignGibbet } = useWorld();
   const { dragging } = useDragStore(); // was draggingItem
 
+  console.log("RightPanel render - dragging:", dragging);
+
   const draggingBrainItem = dragging?.type === "brain" ? dragging.payload : null;
   const draggingBodyItem = dragging?.type === "body" ? dragging.payload : null;
 

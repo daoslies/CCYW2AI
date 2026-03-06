@@ -10,7 +10,7 @@ import { useWorld } from "../../store/worldStore.jsx";
 import { NETWORK_CONFIG_T1, NETWORK_CONFIG_T2 } from "../../data/networkConfig.js";
 import DropZone from "../dragdrop/DropZone.jsx";
 import DragLayer from "../dragdrop/DragLayer.jsx";
-import { DragProvider } from "../../store/dragStore.jsx";
+import { DragProvider, useDragStore } from "../../store/dragStore.jsx";
 import BrainsRoster from "../roster/BrainsRoster.jsx";
 import BodiesRoster from "../roster/BodiesRoster.jsx";
 import GibbetRoster from "../roster/GibbetRoster.jsx";
@@ -111,6 +111,10 @@ export default function App() {
     usedBrainIds,
     usedBodyIds,
   } = useWorld();
+
+  const { dragging } = useDragStore();
+
+  console.log("App.jsx render - dragging:", dragging);
 
   // Get assigned gibbet IDs (now arrays)
   const trainerGibbetId = activeTrainerId;
@@ -362,443 +366,450 @@ export default function App() {
   }, []);
 
   return (
-    <DragProvider>
+    <div style={{
+      minHeight: "100vh",
+      background: "#0a0c16", // slightly lighter than the side panels
+      display: "flex",
+      flexDirection: "row",
+      alignItems: "stretch",
+      justifyContent: "center",
+      fontFamily: "'DM Mono', 'Fira Mono', 'Courier New', monospace",
+      padding: 0,
+    }}>
+      {/* Left: Network/training sidebar (fixed) */}
+      <LeftPanel
+        trainerBrain={trainerBrain}
+        trainerNetwork={trainerNetwork}
+        indicator={indicator}
+        terrariumIndicator={terrariumIndicator}
+        view={view}
+        networkUpdateTick={networkUpdateTick}
+        terrariumResourceCounters={terrariumResourceCounters}
+      />
+      {/* Center: Main content (fixed-size container) */}
       <div style={{
-        minHeight: "100vh",
-        background: "#0a0c16", // slightly lighter than the side panels
+        position: "absolute",
+        left: 340, // Offset for fixed left sidebar width
+        right: 280, // Offset for fixed right sidebar width
+        top: 0,
+        bottom: 0,
+        minWidth: 0,
         display: "flex",
-        flexDirection: "row",
-        alignItems: "stretch",
-        justifyContent: "center",
-        fontFamily: "'DM Mono', 'Fira Mono', 'Courier New', monospace",
+        flexDirection: "column",
+        alignItems: "center",
         padding: 0,
+        height: `${100 / UI_ZOOM}vh`,
+        maxHeight: `${100 / UI_ZOOM}vh`,
+        minHeight: 0,
+        boxSizing: "border-box",
+        background: "#0a0c16", // slightly lighter than the side panels
+        zIndex: 1
       }}>
-        {/* Left: Network/training sidebar (fixed) */}
-        <LeftPanel
-          trainerBrain={trainerBrain}
-          trainerNetwork={trainerNetwork}
-          indicator={indicator}
-          terrariumIndicator={terrariumIndicator}
-          view={view}
-          networkUpdateTick={networkUpdateTick}
-          terrariumResourceCounters={terrariumResourceCounters}
-        />
-        {/* Center: Main content (fixed-size container) */}
+        {/* Tab switch, always visible, fixed at top */}
         <div style={{
-          position: "absolute",
-          left: 340, // Offset for fixed left sidebar width
-          right: 280, // Offset for fixed right sidebar width
+          position: "fixed",
+          left: 340,
+          right: 280,
           top: 0,
-          bottom: 0,
-          minWidth: 0,
+          zIndex: 20,
+          background: "#0a0c16",
+          padding: "0px 0 0px 0", // Increased top padding for trainer view
           display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          padding: 0,
-          height: `${100 / UI_ZOOM}vh`,
-          maxHeight: `${100 / UI_ZOOM}vh`,
-          minHeight: 0,
-          boxSizing: "border-box",
-          background: "#0a0c16", // slightly lighter than the side panels
-          zIndex: 1
+          gap: 8,
+          justifyContent: "center",
+          boxShadow: "0 2px 12px #0004"
         }}>
-          {/* Tab switch, always visible, fixed at top */}
-          <div style={{
-            position: "fixed",
-            left: 340,
-            right: 280,
-            top: 0,
-            zIndex: 20,
-            background: "#0a0c16",
-            padding: "0px 0 0px 0", // Increased top padding for trainer view
-            display: "flex",
-            gap: 8,
-            justifyContent: "center",
-            boxShadow: "0 2px 12px #0004"
+          <button
+            onClick={() => setView("trainer")}
+            style={{
+              padding: "6px 16px",
+              borderRadius: 8,
+              border: view === "trainer" ? "2px solid #3b82f6" : "1px solid #222",
+              background: view === "trainer" ? "#1e293b" : "#18181b",
+              color: view === "trainer" ? "#60a5fa" : "#aaa",
+              fontWeight: 500,
+              cursor: "pointer",
+            }}
+          >
+            Trainer
+          </button>
+          <button
+            onClick={() => setView("terrarium")}
+            onMouseEnter={() => {
+              if (dragging && dragging.type === "gibbet") setView("terrarium");
+            }}
+            style={{
+              padding: "6px 16px",
+              borderRadius: 8,
+              border: view === "terrarium" ? "2px solid #22c55e" : "1px solid #222",
+              background: view === "terrarium" ? "#052e16" : "#18181b",
+              color: view === "terrarium" ? "#4ade80" : "#aaa",
+              fontWeight: 500,
+              cursor: "pointer",
+              // Add glow if dragging a gibbet
+              boxShadow:
+                dragging && dragging.type === "gibbet"
+                  ? "0 0 12px 4px #4ade80, 0 0 2px #22c55e"
+                  : undefined,
+              transition: "box-shadow 0.18s, background 0.18s, border 0.18s, color 0.18s",
+            }}
+          >
+            Terrarium
+          </button>
+        </div>
+        {/* Spacer for fixed tab bar height */}
+        <div style={{ height: 66 }} />
+        {/* Fixed content area below tab bar */}
+        <div style={{ flex: 1, width: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start" }}>
+          {/* Trainer view */}
+          <div style={{ 
+            display: view === "trainer" ? "flex" : "none", 
+            width: "100%", 
+            height: "100%",       // fill the available space
+            flexDirection: "column", 
+            alignItems: "center", 
+            justifyContent: "flex-start",  // was "center", now flex-start
+            overflowY: "auto",             // scroll within this panel only
+            overflowX: "hidden",
+            paddingTop: 40,                // breathing room at top
+            boxSizing: "border-box",
+            minHeight: 0,                  // allow flexbox to shrink
+            paddingBottom: 32              // extra breathing room at bottom
           }}>
-            <button
-              onClick={() => setView("trainer")}
-              style={{
-                padding: "6px 16px",
-                borderRadius: 8,
-                border: view === "trainer" ? "2px solid #3b82f6" : "1px solid #222",
-                background: view === "trainer" ? "#1e293b" : "#18181b",
-                color: view === "trainer" ? "#60a5fa" : "#aaa",
-                fontWeight: 500,
-                cursor: "pointer",
-              }}
-            >
-              Trainer
-            </button>
-            <button
-              onClick={() => setView("terrarium")}
-              style={{
-                padding: "6px 16px",
-                borderRadius: 8,
-                border: view === "terrarium" ? "2px solid #22c55e" : "1px solid #222",
-                background: view === "terrarium" ? "#052e16" : "#18181b",
-                color: view === "terrarium" ? "#4ade80" : "#aaa",
-                fontWeight: 500,
-                cursor: "pointer",
-              }}
-            >
-              Terrarium
-            </button>
-          </div>
-          {/* Spacer for fixed tab bar height */}
-          <div style={{ height: 66 }} />
-          {/* Fixed content area below tab bar */}
-          <div style={{ flex: 1, width: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start" }}>
-            {/* Trainer view */}
             <div style={{ 
-              display: view === "trainer" ? "flex" : "none", 
               width: "100%", 
-              height: "100%",       // fill the available space
+              maxWidth: 540,
+              display: "flex", 
               flexDirection: "column", 
-              alignItems: "center", 
-              justifyContent: "flex-start",  // was "center", now flex-start
-              overflowY: "auto",             // scroll within this panel only
-              overflowX: "hidden",
-              paddingTop: 40,                // breathing room at top
-              boxSizing: "border-box",
-              minHeight: 0,                  // allow flexbox to shrink
-              paddingBottom: 32              // extra breathing room at bottom
+              alignItems: "center",
+              minHeight: "min-content",  // don't compress children
+              paddingBottom: 24           // breathing room at bottom of scroll
             }}>
-              <div style={{ 
-                width: "100%", 
-                maxWidth: 540,
-                display: "flex", 
-                flexDirection: "column", 
-                alignItems: "center",
-                minHeight: "min-content",  // don't compress children
-                paddingBottom: 24           // breathing room at bottom of scroll
-              }}>
-                {/* Header */}
-                <div style={{ marginBottom: 32, textAlign: "center" }}>
-                  <p style={{ color: "#444", fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", margin: "0 0 6px" }}>
-                    {trainerBrain?.name ? `${trainerBrain.name} · Psionic training` : `No brain selected · Psionic training`}
-                    <br />
-                    <span style={{ color: '#7dd3fc', fontWeight: 500 }}>
-                      {(() => {
-                        // Check how many color matches the model gets right
-                        let nCorrect = 0;
-                        if (predictions) {
-                          nCorrect = ["red", "green", "blue"].reduce((acc, id) => {
-                            const pred = predictions[id];
-                            return acc + (pred && pred.id === id ? 1 : 0);
-                          }, 0);
-                        }
-                        if (nCorrect === 3) return "Model training successful – Ready for Release!";
-                        if (nCorrect === 2) {
-                          if (trainCount < 10) return "Model is nearly there! Just a bit more training.";
-                          if (trainCount < 20) return "Model is showing strong recognition. Almost perfect!";
-                          if (trainCount < 40) return "Model is close, but something feels uncertain. Keep going—success is within reach.";
-                          return "Model hesitates at the threshold of mastery. Hope lingers—one last push might do it.";
-                        }
-                        if (nCorrect === 1) {
-                          if (trainCount < 10) return "Model is picking up on one color. Keep going!";
-                          if (trainCount < 20) return "Model recognises only one color. More training needed.";
-                          if (trainCount < 40) return "Model seems stuck, struggling to break through. Progress feels distant. \n It may be worth SCRAMBLING this one's brains to start fresh. \n Sometimes they become locked in their ways and there's just no reasoning with them.";
-                          return "Model is lost in confusion. Perhaps a fresh start is needed.";
-                        }
-                        if (trainCount === 0) return "Model ready to commence training";
-                        if (trainCount > 0 && trainCount < 5) return "Model warming up...";
-                        if (trainCount >= 5 && trainCount < 10) return "Model showing initial progress";
-                        return null;
-                      })()}
-                    </span>
+              {/* Header */}
+              <div style={{ marginBottom: 32, textAlign: "center" }}>
+                <p style={{ color: "#444", fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", margin: "0 0 6px" }}>
+                  {trainerBrain?.name ? `${trainerBrain.name} · Psionic training` : `No brain selected · Psionic training`}
+                  <br />
+                  <span style={{ color: '#7dd3fc', fontWeight: 500 }}>
+                    {(() => {
+                      // Check how many color matches the model gets right
+                      let nCorrect = 0;
+                      if (predictions) {
+                        nCorrect = ["red", "green", "blue"].reduce((acc, id) => {
+                          const pred = predictions[id];
+                          return acc + (pred && pred.id === id ? 1 : 0);
+                        }, 0);
+                      }
+                      if (nCorrect === 3) return "Model training successful – Ready for Release!";
+                      if (nCorrect === 2) {
+                        if (trainCount < 10) return "Model is nearly there! Just a bit more training.";
+                        if (trainCount < 20) return "Model is showing strong recognition. Almost perfect!";
+                        if (trainCount < 40) return "Model is close, but something feels uncertain. Keep going—success is within reach.";
+                        return "Model hesitates at the threshold of mastery. Hope lingers—one last push might do it.";
+                      }
+                      if (nCorrect === 1) {
+                        if (trainCount < 10) return "Model is picking up on one color. Keep going!";
+                        if (trainCount < 20) return "Model recognises only one color. More training needed.";
+                        if (trainCount < 40) return "Model seems stuck, struggling to break through. Progress feels distant. \n It may be worth SCRAMBLING this one's brains to start fresh. \n Sometimes they become locked in their ways and there's just no reasoning with them.";
+                        return "Model is lost in confusion. Perhaps a fresh start is needed.";
+                      }
+                      if (trainCount === 0) return "Model ready to commence training";
+                      if (trainCount > 0 && trainCount < 5) return "Model warming up...";
+                      if (trainCount >= 5 && trainCount < 10) return "Model showing initial progress";
+                      return null;
+                    })()}
+                  </span>
+                </p>
+              </div>
+
+              {/* Main card */}
+              <div
+                className={flash === "correct" ? "flash-correct" : flash === "wrong" ? "flash-wrong" : ""}
+                style={{
+                  background: "#111117",
+                  border: "1px solid #1e1e28",
+                  borderRadius: 20,
+                  padding: "32px 28px 28px",
+                  transition: "background 0.3s",
+                  width: "100%",
+                  maxWidth: 420,
+                  margin: "0 auto"
+                }}
+              >
+
+                {/* Indicator */}
+                <div style={{ textAlign: "center", marginBottom: 36 }}>
+                  <p style={{ color: "#555", fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", margin: "0 0 16px" }}>
+                    press this
+                  </p>
+                  <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                    <div
+                      className="indicator-pulse"
+                      style={{
+                        "--glow": indicator.glow,
+                        width: 72,
+                        height: 72,
+                        borderRadius: "50%",
+                        background: indicator.hex,
+                        boxShadow: `0 0 24px ${indicator.glow}, 0 0 48px ${indicator.glow}40`,
+                      }}
+                    />
+                  </div>
+                  <p style={{ color: indicator.hex, fontSize: 13, letterSpacing: "0.12em", margin: "12px 0 0", textTransform: "uppercase", fontWeight: 500 }}>
+                    {indicator.label}
                   </p>
                 </div>
 
-                {/* Main card */}
-                <div
-                  className={flash === "correct" ? "flash-correct" : flash === "wrong" ? "flash-wrong" : ""}
-                  style={{
-                    background: "#111117",
-                    border: "1px solid #1e1e28",
-                    borderRadius: 20,
-                    padding: "32px 28px 28px",
-                    transition: "background 0.3s",
-                    width: "100%",
-                    maxWidth: 420,
-                    margin: "0 auto"
-                  }}
-                >
+                {/* Color buttons */}
+                <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 32 }}>
+                  {COLORS.map(color => (
+                    <button
+                      key={color.id}
+                      className="color-btn"
+                      onClick={() => handlePress(color)}
+                      style={{
+                        background: color.hex,
+                        boxShadow: `0 4px 20px ${color.glow}`,
+                      }}
+                      aria-label={color.label}
+                    />
+                  ))}
+                </div>
 
-                  {/* Indicator */}
-                  <div style={{ textAlign: "center", marginBottom: 36 }}>
-                    <p style={{ color: "#555", fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", margin: "0 0 16px" }}>
-                      press this
-                    </p>
-                    <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                      <div
-                        className="indicator-pulse"
-                        style={{
-                          "--glow": indicator.glow,
-                          width: 72,
-                          height: 72,
-                          borderRadius: "50%",
-                          background: indicator.hex,
-                          boxShadow: `0 0 24px ${indicator.glow}, 0 0 48px ${indicator.glow}40`,
-                        }}
-                      />
-                    </div>
-                    <p style={{ color: indicator.hex, fontSize: 13, letterSpacing: "0.12em", margin: "12px 0 0", textTransform: "uppercase", fontWeight: 500 }}>
-                      {indicator.label}
-                    </p>
-                  </div>
+                {/* Color labels */}
+                <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 28 }}>
+                  {COLORS.map(color => (
+                    <span key={color.id} style={{ width: 88, textAlign: "center", color: "#444", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                      {color.label}
+                    </span>
+                  ))}
+                </div>
 
-                  {/* Color buttons */}
-                  <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 32 }}>
-                    {COLORS.map(color => (
-                      <button
-                        key={color.id}
-                        className="color-btn"
-                        onClick={() => handlePress(color)}
-                        style={{
-                          background: color.hex,
-                          boxShadow: `0 4px 20px ${color.glow}`,
-                        }}
-                        aria-label={color.label}
-                      />
-                    ))}
-                  </div>
+                {/* Divider */}
+                <div style={{ borderTop: "1px solid #1a1a22", marginBottom: 20 }} />
 
-                  {/* Color labels */}
-                  <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 28 }}>
-                    {COLORS.map(color => (
-                      <span key={color.id} style={{ width: 88, textAlign: "center", color: "#444", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase" }}>
-                        {color.label}
-                      </span>
-                    ))}
-                  </div>
+                {/* Stats row */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
 
-                  {/* Divider */}
-                  <div style={{ borderTop: "1px solid #1a1a22", marginBottom: 20 }} />
-
-                  {/* Stats row */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
-
-                    {/* Left: training stats */}
-                    <div style={{ flex: 1 }}>
-                      <p style={{ color: "#444", fontSize: 10, letterSpacing: "0.15em", textTransform: "uppercase", margin: "0 0 8px" }}>Training</p>
-                      <div style={{ display: "flex", gap: 20 }}>
-                        <div>
-                          <p style={{ color: "#666", fontSize: 10, margin: "0 0 2px", letterSpacing: "0.1em" }}>STEPS</p>
-                          <p style={{ color: "#e2e2e2", fontSize: 20, fontWeight: 500, margin: 0, letterSpacing: "-0.02em" }}>{trainCount}</p>
-                        </div>
-                        {lastLoss !== null && (
-                          <div>
-                            <p style={{ color: "#666", fontSize: 10, margin: "0 0 2px", letterSpacing: "0.1em" }}>LOSS</p>
-                            <p style={{ color: lastLoss < 0.01 ? "#22c55e" : lastLoss < 0.1 ? "#eab308" : "#ef4444", fontSize: 20, fontWeight: 500, margin: 0, letterSpacing: "-0.02em" }}>
-                              {lastLoss.toFixed(4)}
-                            </p>
-                          </div>
-                        )}
+                  {/* Left: training stats */}
+                  <div style={{ flex: 1 }}>
+                    <p style={{ color: "#444", fontSize: 10, letterSpacing: "0.15em", textTransform: "uppercase", margin: "0 0 8px" }}>Training</p>
+                    <div style={{ display: "flex", gap: 20 }}>
+                      <div>
+                        <p style={{ color: "#666", fontSize: 10, margin: "0 0 2px", letterSpacing: "0.1em" }}>STEPS</p>
+                        <p style={{ color: "#e2e2e2", fontSize: 20, fontWeight: 500, margin: 0, letterSpacing: "-0.02em" }}>{trainCount}</p>
                       </div>
-
-                      {/* Sparkline */}
-                      {sparkline && (
-                        <div style={{ marginTop: 10 }}>
-                          <svg width={sparkline.W} height={sparkline.H} style={{ overflow: "visible" }}>
-                            <polyline
-                              points={sparkline.pts}
-                              fill="none"
-                              stroke="#3b82f6"
-                              strokeWidth="1.5"
-                              strokeLinejoin="round"
-                              strokeLinecap="round"
-                              opacity="0.7"
-                            />
-                          </svg>
+                      {lastLoss !== null && (
+                        <div>
+                          <p style={{ color: "#666", fontSize: 10, margin: "0 0 2px", letterSpacing: "0.1em" }}>LOSS</p>
+                          <p style={{ color: lastLoss < 0.01 ? "#22c55e" : lastLoss < 0.1 ? "#eab308" : "#ef4444", fontSize: 20, fontWeight: 500, margin: 0, letterSpacing: "-0.02em" }}>
+                            {lastLoss.toFixed(4)}
+                          </p>
                         </div>
                       )}
                     </div>
 
-                    {/* Right: predictions */}
-                    {predictions && (
-                      <div style={{ flex: 1 }}>
-                        <p style={{ color: "#444", fontSize: 10, letterSpacing: "0.15em", textTransform: "uppercase", margin: "0 0 8px" }}>NN Predicts</p>
-                        {/* Ring and text breakdown side by side */}
-                        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8 }}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 5, justifyContent: "center" }}>
-                            {COLORS.map(c => {
-                              const pred = predictions[c.id];
-                              const isRight = pred.id === c.id;
-                              return (
-                                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 22 }}>
-                                  <span className="pred-dot" style={{ background: c.hex }} />
-                                  <span style={{ color: "#555", fontSize: 11, width: 42 }}>{c.label}</span>
-                                  <span style={{ color: "#333", fontSize: 11 }}>→</span>
-                                  <span className="pred-dot" style={{ background: pred.hex }} />
-                                  <span style={{ color: isRight ? "#22c55e" : "#666", fontSize: 11 }}>
-                                    {pred.label}
-                                    {isRight && <span style={{ marginLeft: 4, opacity: 0.6 }}>✓</span>}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <div style={{ flexShrink: 0, display: "flex", alignItems: "center", height: "100%" }}>
-                            <PredictionRing
-                              network={trainerNetwork}
-                              size={52}
-                              animTrigger={trainCount}
-                            />
-                          </div>
-                        </div>
+                    {/* Sparkline */}
+                    {sparkline && (
+                      <div style={{ marginTop: 10 }}>
+                        <svg width={sparkline.W} height={sparkline.H} style={{ overflow: "visible" }}>
+                          <polyline
+                            points={sparkline.pts}
+                            fill="none"
+                            stroke="#3b82f6"
+                            strokeWidth="1.5"
+                            strokeLinejoin="round"
+                            strokeLinecap="round"
+                            opacity="0.7"
+                          />
+                        </svg>
                       </div>
                     )}
                   </div>
 
-                </div>
-
-                {/* Footer */}
-                <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-                  <p style={{ color: "#333", fontSize: 10, letterSpacing: "0.1em", margin: 0 }}>
-                    {trainCount === 0
-                      ? "press any coloured button"
-                      : lastPressed
-                        ? `last pressed · ${lastPressed.label.toLowerCase()}`
-                        : ""}
-                  </p>
-                  <button className="reset-btn" onClick={handleReset}>SCRAMBLE</button>
-                </div>
-
-              </div>
-            </div>
-            {/* Terrarium view (always mounted, only visible when active) */}
-            <div style={{ display: view === "terrarium" ? "flex" : "none", width: "100%", height: "100%", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ width: "100%", maxWidth: 540, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                {/* Quote display at top of terrarium panel */}
-                <div style={{
-                  marginBottom: 28,
-                  marginTop: 5,
-                  textAlign: "center",
-                }}>
-                  <p style={{
-                    color: "#444",
-                    fontSize: 11,
-                    letterSpacing: "0.2em",
-                    textTransform: "uppercase",
-                    margin: "0 0 4px 0",
-                    lineHeight: 1.5,
-                    whiteSpace: "pre-line",
-                    maxWidth: 420,
-                  }}>
-                    {QUOTES[activeQuoteIdx].text.split("\n")[activeQuoteLineIdx]}
-                  </p>
-                  <p style={{
-                    color: "#7dd3fc",
-                    fontSize: 10,
-                    fontWeight: 500,
-                    letterSpacing: "0.15em",
-                    margin: 0,
-                    textTransform: "uppercase",
-                  }}>
-                    {QUOTES[activeQuoteIdx].author}
-                  </p>
-                </div>
-                {/* Terrarium 1 clickable wrapper */}
-                <div
-                  onClick={() => setActiveTerrarium(1)}
-                  style={{
-                    cursor: "pointer",
-                    outline: activeTerrarium === 1 ? "3px solid #3b82f6" : "none",
-                    boxShadow: activeTerrarium === 1 ? "0 0 16px #3b82f6aa" : "none",
-                    borderRadius: 24,
-                    transition: "outline 0.2s, box-shadow 0.2s",
-                    marginBottom: 24,
-                    width: "100%"
-                  }}
-                >
-                  <Terrarium
-                    slot="t1"
-                    config={NETWORK_CONFIG_T1}
-                    onIndicatorChange={setTerrariumIndicator}
-                    onResourceCounters={setTerrariumResourceCounters}
-                    onTrainingPanel={setTerrariumTrainingPanel}
-                    onUpgradesSidebar={setUpgradesSidebar}
-                    onUpgradeLevelsChange={handleTerrariumUpgradeLevelsChange}
-                    parentUpgradeLevels={terrariumUpgradeLevels}
-                    onPurchaseHandler={handlePurchaseHandler}
-                  />
-                  {/* Terrarium 1 training panel, only if active */}
-                  {activeTerrarium === 1 && terrariumTrainingPanel}
-                </div>
-                {/* Weather terrarium, unlocked by upgrade */}
-                {terrariumUpgradeLevels.secondTerrarium >= 1 && (
-                  <>
-                    <div
-                      onClick={() => setActiveTerrarium(2)}
-                      style={{
-                        marginTop: 0,
-                        width: "100%",
-                        maxWidth: 540,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        cursor: "pointer",
-                        outline: activeTerrarium === 2 ? "3px solid #38bdf8" : "none",
-                        boxShadow: activeTerrarium === 2 ? "0 0 16px #38bdf8aa" : "none",
-                        borderRadius: 24,
-                        transition: "outline 0.2s, box-shadow 0.2s",
-                        marginBottom: 24
-                      }}
-                    >
-                      <Terrarium
-                        slot="t2"
-                        config={NETWORK_CONFIG_T2}
-                        onIndicatorChange={setTerrarium2Indicator}
-                        onResourceCounters={setTerrariumResourceCounters}
-                        onTrainingPanel={setTerrarium2TrainingPanel}
-                        onUpgradesSidebar={setUpgradesSidebar}
-                        onUpgradeLevelsChange={handleTerrariumUpgradeLevelsChange}
-                        parentUpgradeLevels={terrariumUpgradeLevels}
-                        onPurchaseHandler={handlePurchaseHandler}
-                      />
-                      {/* Terrarium 2 training panel, only if active */}
-                      {activeTerrarium === 2 && terrarium2TrainingPanel}
+                  {/* Right: predictions */}
+                  {predictions && (
+                    <div style={{ flex: 1 }}>
+                      <p style={{ color: "#444", fontSize: 10, letterSpacing: "0.15em", textTransform: "uppercase", margin: "0 0 8px" }}>NN Predicts</p>
+                      {/* Ring and text breakdown side by side */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 5, justifyContent: "center" }}>
+                          {COLORS.map(c => {
+                            const pred = predictions[c.id];
+                            const isRight = pred.id === c.id;
+                            return (
+                              <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 22 }}>
+                                <span className="pred-dot" style={{ background: c.hex }} />
+                                <span style={{ color: "#555", fontSize: 11, width: 42 }}>{c.label}</span>
+                                <span style={{ color: "#333", fontSize: 11 }}>→</span>
+                                <span className="pred-dot" style={{ background: pred.hex }} />
+                                <span style={{ color: isRight ? "#22c55e" : "#666", fontSize: 11 }}>
+                                  {pred.label}
+                                  {isRight && <span style={{ marginLeft: 4, opacity: 0.6 }}>✓</span>}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div style={{ flexShrink: 0, display: "flex", alignItems: "center", height: "100%" }}>
+                          <PredictionRing
+                            network={trainerNetwork}
+                            size={52}
+                            animTrigger={trainCount}
+                          />
+                        </div>
+                      </div>
                     </div>
-                  </>
-                )}
+                  )}
+                </div>
+
               </div>
+
+              {/* Footer */}
+              <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                <p style={{ color: "#333", fontSize: 10, letterSpacing: "0.1em", margin: 0 }}>
+                  {trainCount === 0
+                    ? "press any coloured button"
+                    : lastPressed
+                      ? `last pressed · ${lastPressed.label.toLowerCase()}`
+                      : ""}
+                </p>
+                <button className="reset-btn" onClick={handleReset}>SCRAMBLE</button>
+              </div>
+
+            </div>
+          </div>
+          {/* Terrarium view (always mounted, only visible when active) */}
+          <div style={{ display: view === "terrarium" ? "flex" : "none", width: "100%", height: "100%", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: "100%", maxWidth: 540, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+              {/* Quote display at top of terrarium panel */}
+              <div style={{
+                marginBottom: 28,
+                marginTop: 5,
+                textAlign: "center",
+              }}>
+                <p style={{
+                  color: "#444",
+                  fontSize: 11,
+                  letterSpacing: "0.2em",
+                  textTransform: "uppercase",
+                  margin: "0 0 4px 0",
+                  lineHeight: 1.5,
+                  whiteSpace: "pre-line",
+                  maxWidth: 420,
+                }}>
+                  {QUOTES[activeQuoteIdx].text.split("\n")[activeQuoteLineIdx]}
+                </p>
+                <p style={{
+                  color: "#7dd3fc",
+                  fontSize: 10,
+                  fontWeight: 500,
+                  letterSpacing: "0.15em",
+                  margin: 0,
+                  textTransform: "uppercase",
+                }}>
+                  {QUOTES[activeQuoteIdx].author}
+                </p>
+              </div>
+              {/* Terrarium 1 clickable wrapper */}
+              <div
+                onClick={() => setActiveTerrarium(1)}
+                style={{
+                  cursor: "pointer",
+                  outline: activeTerrarium === 1 ? "3px solid #3b82f6" : "none",
+                  boxShadow: activeTerrarium === 1 ? "0 0 16px #3b82f6aa" : "none",
+                  borderRadius: 24,
+                  transition: "outline 0.2s, box-shadow 0.2s",
+                  marginBottom: 24,
+                  width: "100%"
+                }}
+              >
+                <Terrarium
+                  slot="t1"
+                  config={NETWORK_CONFIG_T1}
+                  onIndicatorChange={setTerrariumIndicator}
+                  onResourceCounters={setTerrariumResourceCounters}
+                  onTrainingPanel={setTerrariumTrainingPanel}
+                  onUpgradesSidebar={setUpgradesSidebar}
+                  onUpgradeLevelsChange={handleTerrariumUpgradeLevelsChange}
+                  parentUpgradeLevels={terrariumUpgradeLevels}
+                  onPurchaseHandler={handlePurchaseHandler}
+                />
+                {/* Terrarium 1 training panel, only if active */}
+                {activeTerrarium === 1 && terrariumTrainingPanel}
+              </div>
+              {/* Weather terrarium, unlocked by upgrade */}
+              {terrariumUpgradeLevels.secondTerrarium >= 1 && (
+                <>
+                  <div
+                    onClick={() => setActiveTerrarium(2)}
+                    style={{
+                      marginTop: 0,
+                      width: "100%",
+                      maxWidth: 540,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      cursor: "pointer",
+                      outline: activeTerrarium === 2 ? "3px solid #38bdf8" : "none",
+                      boxShadow: activeTerrarium === 2 ? "0 0 16px #38bdf8aa" : "none",
+                      borderRadius: 24,
+                      transition: "outline 0.2s, box-shadow 0.2s",
+                      marginBottom: 24
+                    }}
+                  >
+                    <Terrarium
+                      slot="t2"
+                      config={NETWORK_CONFIG_T2}
+                      onIndicatorChange={setTerrarium2Indicator}
+                      onResourceCounters={setTerrariumResourceCounters}
+                      onTrainingPanel={setTerrarium2TrainingPanel}
+                      onUpgradesSidebar={setUpgradesSidebar}
+                      onUpgradeLevelsChange={handleTerrariumUpgradeLevelsChange}
+                      parentUpgradeLevels={terrariumUpgradeLevels}
+                      onPurchaseHandler={handlePurchaseHandler}
+                    />
+                    {/* Terrarium 2 training panel, only if active */}
+                    {activeTerrarium === 2 && terrarium2TrainingPanel}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
-
-        {/* Right: Upgrades/Gibbet Roster sidebar (fixed) */}
-        <RightPanel
-          rightTab={rightTab}
-          setRightTab={setRightTab}
-          upgradesSidebar={upgradesSidebar}
-          draggingBrain={draggingBrain}
-          draggingBody={draggingBody}
-          combineBrain={combineBrain}
-          combineBody={combineBody}
-          onDropBrain={handleDropBrain}
-          onDropBody={handleDropBody}
-          onCombine={handleCombine}
-          onCancel={handleCombineCancel}
-          brainsBuyMenuPanel={brainsBuyMenuPanel}
-          bodiesBuyMenuPanel={bodiesBuyMenuPanel}
-        />
-        {rightTab === "gibbets" && (
-          <div style={{ padding: "0 12px 32px", display: "flex", flexDirection: "column", gap: 12 }}>
-            {/* Buy menus and GibbetRoster now injected via RightPanel */}
-          </div>
-        )}
-        <BrainsRoster
-          setDraggingBrain={setDraggingBrain}
-          onResourceDeduct={purchaseHandler}
-          injectPanel={setBrainsBuyMenuPanel}
-        />
-        <BodiesRoster
-          setDraggingBody={setDraggingBody}
-          onResourceDeduct={purchaseHandler}
-          injectPanel={setBodiesBuyMenuPanel}
-        />
       </div>
-    </DragProvider>
+
+      {/* Right: Upgrades/Gibbet Roster sidebar (fixed) */}
+      <RightPanel
+        rightTab={rightTab}
+        setRightTab={setRightTab}
+        upgradesSidebar={upgradesSidebar}
+        draggingBrain={draggingBrain}
+        draggingBody={draggingBody}
+        combineBrain={combineBrain}
+        combineBody={combineBody}
+        onDropBrain={handleDropBrain}
+        onDropBody={handleDropBody}
+        onCombine={handleCombine}
+        onCancel={handleCombineCancel}
+        brainsBuyMenuPanel={brainsBuyMenuPanel}
+        bodiesBuyMenuPanel={bodiesBuyMenuPanel}
+      />
+      {rightTab === "gibbets" && (
+        <div style={{ padding: "0 12px 32px", display: "flex", flexDirection: "column", gap: 12 }}>
+          {/* Buy menus and GibbetRoster now injected via RightPanel */}
+        </div>
+      )}
+      <BrainsRoster
+        setDraggingBrain={setDraggingBrain}
+        onResourceDeduct={purchaseHandler}
+        injectPanel={setBrainsBuyMenuPanel}
+      />
+      <BodiesRoster
+        setDraggingBody={setDraggingBody}
+        onResourceDeduct={purchaseHandler}
+        injectPanel={setBodiesBuyMenuPanel}
+      />
+    </div>
   );
 }
