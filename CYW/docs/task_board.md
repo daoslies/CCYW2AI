@@ -31,42 +31,27 @@ One-liner in DraggableItem: call select(type, id) from startDrag. Do this sprint
 - [x] Terrarium nav button glows when holding a gibbet (dragging), and auto-navigates to Terrarium when hovered during drag (6 Mar 2026)
 - [x] Swap right panel tab order so "Grow Gibbets" is first and default (6 Mar 2026)
 
+### #4 + #5 — Gibbet naming + random name generation (2026-03-06)
+- Architect-approved name generator (PREFIXES + SUFFIXES) implemented in gibbetNames.js.
+- combineGibbet uses generateGibbetName() as default; all new gibbets get organic names unless renamed.
+- Gibbet names can be edited inline via ✏️ button, or randomised with 🎲 button in the roster.
+- User can enter any name of their choice; UI is explicit and user-friendly.
+
 ---
 
 ## 🔴 Active / In Progress
-
-### #NEW — Grow Gibbets progressive unlock
-On first load, only the Brains section is active. Bodies and Gibbets sections are greyed/locked until the first brain has been trained at least once. Simple trainCount > 0 check.
-
-### #4 + #5 — Gibbet naming + random name generation
-Double-click to rename in the gibbet roster card (inline <input> that commits on blur/enter). generateGibbetName() already written — hook into combineGibbet as default. Add a 🎲 button next to the name field to regenerate.
-
----
-
-## 🟡 Sprint 1 — Core UX (self-contained, high value)
-
-
-
-
-
-### #NEW — Swap right panel tab order + default to Grow Gibbets
-Move Grow Gibbets tab before Upgrades. Make it the default. This is the correct new user journey: land on trainer → see brain roster immediately → train → grow → terrarium.
-
-### #NEW — Grow Gibbets progressive unlock
-On first load, only the Brains section is active. Bodies and Gibbets sections are greyed/locked until the first brain has been trained at least once. Simple trainCount > 0 check.
-
-### #4 + #5 — Gibbet naming + random name generation
-Double-click to rename in the gibbet roster card (inline <input> that commits on blur/enter). generateGibbetName() already written — hook into combineGibbet as default. Add a 🎲 button next to the name field to regenerate.
-
----
-
-## 🟡 Sprint 2 — Entity Depth
 
 ### #12 — Left panel info section
 SelectedEntityPanel with tabbed detail is fully specced. Implement SelectionProvider, SelectedEntityPanel, wire roster click handlers. Replace GibbetBioPanel.
 
 ### #NEW — Gibbet bio: lifetime collection + age
 In the gibbet's store object, track createdAt (already exists) and lifetimeCollections: { red: 0, green: 0, blue: 0 }. Increment in tickGibbet on each successful collection. Display in the LIVE tab of the gibbet inspector: age in game-time, total resources by colour.
+
+
+---
+
+## 🟡 Sprint 2 — Entity Depth
+
 
 ### #NEW — User-clickable resources
 Resources in the terrarium can be clicked directly by the player for a small manual yield. Very slow rate — roughly 10% of gibbet mining speed. Visual: brief click ripple on the resource. Mechanically: directly reduce resource.health by a fixed amount on click. "Jangling keys" mechanic, explicitly slow.
@@ -105,6 +90,10 @@ Separate from drag-select. Needs investigation of current T2 state before estima
 ---
 
 ## 🔵 Backlog — Needs design before implementing
+
+### #NEW — Grow Gibbets progressive unlock
+On first load, only the Brains section is active. Bodies and Gibbets sections are greyed/locked until the first brain has been trained at least once. Simple trainCount > 0 check.
+
 
 ### #NEW — Upgrade costs actually displayed and enforced
 Costs show in upgrade panel but don't gate purchase (separate from brain/body purchase bug). Audit upgrade affordability check against live gs.collections values.

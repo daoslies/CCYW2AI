@@ -4,6 +4,7 @@ import { NETWORK_CONFIG_T1 } from "../data/networkConfig";
 import { GIBBET_BREEDS } from "../data/gibbet_breeds";
 import { BRAIN_TYPES } from "../data/brainTypes";
 import { BODY_TYPES } from "../data/bodyTypes";
+import { generateGibbetName } from '../data/gibbetNames.js';
 
 // Utility to generate random body color with more variety
 function randomBodyColor() {
@@ -109,16 +110,22 @@ export function WorldProvider({ children }) {
   const usedBrainIds = useMemo(() => new Set(gibbets.map(g => g.brainId)), [gibbets]);
   const usedBodyIds = useMemo(() => new Set(gibbets.map(g => g.bodyId)), [gibbets]);
 
-  const combineGibbet = useCallback((brainId, bodyId, name = "Gibbet") => {
+  const combineGibbet = useCallback((brainId, bodyId, name) => {
     if (usedBodyIds.has(bodyId)) return null; // Only block reused bodies
     const body = bodies.find(b => b.id === bodyId);
-    const gibbet = createGibbet(brainId, bodyId, name, body.color);
+    // Use architect's pattern: if no name, generate one
+    const gibbetName = name && name.trim() ? name : generateGibbetName();
+    const gibbet = createGibbet(brainId, bodyId, gibbetName, body.color);
     setGibbets(prev => [...prev, gibbet]);
     return gibbet.id;
   }, [usedBodyIds, bodies]);
 
   const dissolveGibbet = useCallback((gibbetId) => {
     setGibbets(prev => prev.filter(g => g.id !== gibbetId));
+  }, []);
+
+  const updateGibbetMeta = useCallback((id, patch) => {
+    setGibbets(prev => prev.map(g => g.id === id ? { ...g, ...patch } : g));
   }, []);
 
   // Assignments
@@ -156,7 +163,7 @@ export function WorldProvider({ children }) {
     <WorldContext.Provider value={{
       brains, addBrain, getNetwork, updateBrainMeta, usedBrainIds,
       bodies, addBody, usedBodyIds,
-      gibbets, combineGibbet, dissolveGibbet,
+      gibbets, combineGibbet, dissolveGibbet, updateGibbetMeta,
       assignments, assignGibbet, unassignGibbet,
       activeTrainerId, setActiveTrainerId,
       simStates, updateSimState,

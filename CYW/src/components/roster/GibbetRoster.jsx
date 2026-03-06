@@ -10,19 +10,39 @@ import { confidenceMultiplier } from '../../engine/terrariumEngine.js';
 import { nnForward } from '../../engine/nn.js';
 import { useSelection } from "../../store/selectionStore";
 import { useDrag } from "../../store/dragStore.jsx";
+import { generateGibbetName } from '../../data/gibbetNames.js';
 
 const SLOT_LABELS = { t1: "T1", t2: "T2" };
 
 export default function GibbetRoster() {
-  const { gibbets, brains, bodies, assignments, assignGibbet, unassignGibbet, dissolveGibbet, simStates, getNetwork, setActiveTrainerId } = useWorld();
+  const { gibbets, brains, bodies, assignments, assignGibbet, unassignGibbet, dissolveGibbet, simStates, getNetwork, setActiveTrainerId, updateGibbetMeta } = useWorld();
   const [confirmingDissolve, setConfirmingDissolve] = useState(null);
   const { selected, select } = useSelection();
   const { wasDragRef } = useDrag();
+  const [editingId, setEditingId] = useState(null);
+  const [editValue, setEditValue] = useState("");
 
   function getSlotsForGibbet(gibbetId) {
     return Object.entries(assignments)
       .filter(([, arr]) => Array.isArray(arr) && arr.includes(gibbetId))
       .map(([slot]) => slot);
+  }
+
+  function updateName() {
+    if (editingId != null && editValue.trim()) {
+      updateGibbetMeta(editingId, { name: editValue.trim() });
+    }
+    setEditingId(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  function regenerateName(id) {
+    const newName = generateGibbetName();
+    updateGibbetMeta(id, { name: newName });
+    if (editingId === id) setEditValue(newName);
   }
 
   return (
@@ -83,8 +103,40 @@ export default function GibbetRoster() {
             </DraggableItem>
             <RosterItem key={gibbet.id}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ color: R.textPrimary, fontSize: R.fontMd, fontWeight: 500 }}>
-                  {gibbet.name}
+                <div style={{ color: R.textPrimary, fontSize: R.fontMd, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {editingId === gibbet.id ? (
+                    <input
+                      autoFocus
+                      value={editValue}
+                      onChange={e => setEditValue(e.target.value)}
+                      onBlur={() => { updateName(); }}
+                      onKeyDown={e => { if (e.key === 'Enter') updateName(); if (e.key === 'Escape') cancelEdit(); }}
+                      style={{ fontSize: R.fontMd, fontWeight: 500, width: 90, borderRadius: 4, border: '1px solid #444', padding: '2px 6px' }}
+                    />
+                  ) : (
+                    <span
+                      style={{ cursor: 'pointer', userSelect: 'text' }}
+                      title={gibbet.name}
+                    >
+                      {gibbet.name}
+                    </span>
+                  )}
+                  <button
+                    tabIndex={-1}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, marginLeft: 2 }}
+                    title="Edit name"
+                    onClick={e => { e.stopPropagation(); setEditingId(gibbet.id); setEditValue(gibbet.name); }}
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    tabIndex={-1}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, marginLeft: 2 }}
+                    title="Regenerate name"
+                    onClick={e => { e.stopPropagation(); regenerateName(gibbet.id); }}
+                  >
+                    🎲
+                  </button>
                 </div>
                 <div style={{ color: R.textMuted, fontSize: R.fontSm, marginTop: 1 }}>
                   {brain?.name ?? "?"} · {body?.name ?? "?"}
