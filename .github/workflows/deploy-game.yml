@@ -18,14 +18,17 @@ jobs:
           node-version: 22  # 👈 FILL IN: change if your game uses a different node version
 
       - run: npm install
+        working-directory: CYW
+
       - run: npm run build
+        working-directory: CYW
 
       - name: The gentleman copies the files 🖤
         run: |
           git clone https://x-access-token:${{ secrets.MAIN_REPO_TOKEN }}@github.com/daoslies/Salt_Thoughts.git main-site
           # 👆 FILL IN: YOUR_USERNAME and YOUR_MAIN_REPO
           rm -rf main-site/public/game
-          cp -r dist/ main-site/public/game
+          cp -r CYW/dist/ main-site/public/game
           cd main-site
           git config user.email "TheGentleman@TheBoiler.com"
           git config user.name "The Boiler Room Gentleman"
