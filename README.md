@@ -73,5 +73,3 @@ This isn't decoration — it's the interpretive frame that makes the mechanics f
 ---
 
 For development details, see `docs/onboarding.md` and `docs/codebase_structure.md`.
-
-### Note - Remember to update the main public facing readme.md at the root of this project to match any changes made to docs/onboarding.md, whenever changes are made to that file.
