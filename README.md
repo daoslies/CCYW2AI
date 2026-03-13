@@ -1,5 +1,13 @@
 Welcome to ClickBrain (Working Title) — a terrarium idle game where you train AI creatures to collect resources, evolve, and thrive in a world shaped by your choices.
 
+
+Hosted at: 
+
+https://saltthoughts.co.uk/game/index.html
+
+And check out regular www.saltthoughts.co.uk as well if you're interested https://github.com/daoslies/Salt_Thoughts
+
+
 ## What's New for 2026: Brain Types & Body Types
 
 The game now features multiple Brain Types and Body Types, each with unique gameplay effects and unlock conditions:
