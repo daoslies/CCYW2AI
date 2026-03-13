@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: 22  # 👈 FILL IN: change if your game uses a different node version
 
-      - run: npm ci
+      - run: npm install
       - run: npm run build
 
       - name: The gentleman copies the files 🖤
