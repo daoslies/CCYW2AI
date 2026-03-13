@@ -1,0 +1,34 @@
+# 🖤 The Boiler Room Gentleman - he works quietly, he works faithfully
+# Do not disturb him unless a token has expired (see docs)
+
+name: Boiler Room - Deploy game to main site
+
+on:
+  push:
+    branches: [main]  # 👈 FILL IN: change if your game repo's branch isn't called 'main'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 22  # 👈 FILL IN: change if your game uses a different node version
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: The gentleman copies the files 🖤
+        run: |
+          git clone https://x-access-token:${{ secrets.MAIN_REPO_TOKEN }}@github.com/daoslies/Salt_Thoughts.git main-site
+          # 👆 FILL IN: YOUR_USERNAME and YOUR_MAIN_REPO
+          rm -rf main-site/public/game
+          cp -r dist/ main-site/public/game
+          cd main-site
+          git config user.email "TheGentleman@TheBoiler.com"
+          git config user.name "The Boiler Room Gentleman"
+          git add .
+          git commit -m "🖤 soot sprite delivery: update game build" --allow-empty
+          git push
